@@ -38,10 +38,10 @@ const defaultState = {
     contentNote: "题册 + 视频",
     noticeLeft: "302 位高三学生/家长已领取",
     ctaText: "立即领取资料",
-    formHint: "填写 4 项信息，提交后进群领取题册和讲解视频。",
+    formHint: "为给孩子预留资料，请填写领取信息。",
     teacherWechat: "math-guide-2026",
     passphrase: "导数资料",
-    shareLead: "导数题容易卡住的同学很多，把这个资料入口发给他，也许正好能帮上。",
+    shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
     audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
   },
   followStatuses: ["新领取", "已加微信", "已进群", "已发资料", "已互动", "有训练营意向", "已报名", "无效"],
@@ -1367,55 +1367,48 @@ function renderUnlockedMaterials() {
   `;
 }
 
-function renderSuccessPanel({ name, actualJoinCount, shareRef, shareText }) {
+function renderSuccessPanel({ name, actualJoinCount, shareRef, shareText, deliveryMethod }) {
   return `
     <div class="success-page">
       <section class="success-hero">
         <span class="success-check">✓</span>
         <div>
-          <h3>资料领取成功</h3>
-          <p>${maskName(name)}同学已成为第 ${actualJoinCount} 位领取用户，资料入口和进群方式已生成。</p>
+          <h3>领取预约已提交</h3>
+          <p>资料已为${maskName(name)}同学预留。老师会尽快联系您，确认${deliveryMethod || "包邮或自提"}安排。</p>
         </div>
       </section>
 
       <section class="success-section">
         <div class="section-title">
-          <h3>第一步：加老师领取完整资料</h3>
-          <span>最关键</span>
+          <h3>下一步安排</h3>
+          <span>已预留</span>
         </div>
-        <div class="teacher-card">
-          <div class="avatar">师</div>
+        <div class="reserve-info">
           <div>
-            <strong>资料领取老师</strong>
-            <small>负责发资料、拉群和答疑安排</small>
+            <strong>自提地点</strong>
+            <span>滨湖校区 / 庐阳校区</span>
           </div>
+          <p>具体地址和领取时间将通过电话或微信发送。</p>
         </div>
         <div class="wechat-copy-card">
           <div>
-            <span>老师微信</span>
+            <span>加入资料群，看配套讲解</span>
             <strong id="teacherWechat">${state.activity.teacherWechat}</strong>
-            <small>添加后发送口令：${state.activity.passphrase}</small>
+            <small>添加老师后发送口令：${state.activity.passphrase}</small>
           </div>
-          <button type="button" data-copy-wechat>复制</button>
+          <button type="button" data-copy-wechat>加入资料群，看讲解视频</button>
         </div>
       </section>
 
       <section class="success-section">
         <div class="section-title">
-          <h3>第二步：查看资料内容</h3>
-          <span>预览</span>
-        </div>
-        ${renderUnlockedMaterials()}
-      </section>
-
-      <section class="success-section">
-        <div class="section-title">
-          <h3>第三步：顺手转给同学或家长</h3>
+          <h3>顺手分享</h3>
           <span>可选</span>
         </div>
         <p class="share-note">${state.activity.shareLead}</p>
         <textarea id="shareText" readonly rows="4">${shareText}</textarea>
-        <button type="button" class="primary-button full-button" data-share-success="${shareRef}">分享给同学/家长</button>
+        <button type="button" class="primary-button full-button" data-share-success="${shareRef}">转发给需要的家长</button>
+        <small class="success-safe-note">分享不是领取条件，您的资料已预留。</small>
       </section>
     </div>
   `;
@@ -1837,6 +1830,48 @@ function renderLeadFormFields() {
     .join("");
 }
 
+function renderDeliveryFormFields() {
+  return `
+    <div class="delivery-method-block">
+      <strong>领取方式</strong>
+      <p>请选择资料领取方式：</p>
+      <div class="delivery-options" data-delivery-options>
+        <label class="delivery-option is-selected">
+          <input type="radio" name="deliveryMethod" value="包邮到家" checked />
+          <span>
+            <b>包邮到家</b>
+            <small>资料寄到家，需要填写收件地址。</small>
+          </span>
+        </label>
+        <label class="delivery-option">
+          <input type="radio" name="deliveryMethod" value="到校自提" />
+          <span>
+            <b>到校自提</b>
+            <small>到滨湖 / 庐阳校区领取，老师联系确认时间。</small>
+          </span>
+        </label>
+      </div>
+    </div>
+    <p class="form-hint-line">为给孩子预留资料，请填写领取信息。</p>
+    <label>
+      学生姓名
+      <input name="studentName" placeholder="请填写学生姓名" required />
+    </label>
+    <label>
+      所在学校
+      <input name="school" placeholder="请填写所在学校" required />
+    </label>
+    <label>
+      联系电话
+      <input name="phone" placeholder="请填写联系电话" required />
+    </label>
+    <label data-address-field>
+      收件地址
+      <textarea name="address" rows="3" placeholder="请填写收件地址" required></textarea>
+    </label>
+  `;
+}
+
 function readConfiguredAnswers(form) {
   const answers = {};
   state.fields.forEach((field, index) => {
@@ -1856,14 +1891,39 @@ function readConfiguredAnswers(form) {
   return answers;
 }
 
+function readDeliveryAnswers(form) {
+  const deliveryMethod = form.querySelector('[name="deliveryMethod"]:checked')?.value || "包邮到家";
+  const name = form.querySelector('[name="studentName"]')?.value?.trim() || "";
+  const school = form.querySelector('[name="school"]')?.value?.trim() || "";
+  const phone = form.querySelector('[name="phone"]')?.value?.trim() || "";
+  const address = form.querySelector('[name="address"]')?.value?.trim() || "";
+  return {
+    deliveryMethod,
+    name,
+    "学生姓名": name,
+    school,
+    "所在学校": school,
+    phone,
+    "联系电话": phone,
+    address,
+    "收件地址": address
+  };
+}
+
 function createLeadSubmission(type, answers) {
   const fallbackId = getActualJoinCount() ? Math.max(...state.joins.map((item) => Number(item.id) || 0)) + 1 : 1;
-  const name = String(answers.name || answers["学生姓名"] || answers["学生姓名或昵称"] || "新同学").trim();
+  const name = String(answers.name || answers.studentName || answers["学生姓名"] || answers["学生姓名或昵称"] || "新同学").trim();
   const grade = "高三";
   const subject = "数学";
-  const phone = String(answers.phone || answers["联系方式"] || "").trim();
+  const phone = String(answers.phone || answers["联系电话"] || answers["联系方式"] || "").trim();
+  const deliveryMethod = String(answers.deliveryMethod || "").trim();
+  const school = String(answers.school || answers["所在学校"] || "").trim();
+  const address = String(answers.address || answers["收件地址"] || "").trim();
   const scoreRange = String(answers.scoreRange || answers["最近数学分数区间"] || "未填写");
-  const issue = String(answers.issue || answers["当前问题"] || answers["导数最卡在哪里"] || "未填写");
+  const issue =
+    type === "join"
+      ? `${deliveryMethod || "领取预约"}${school ? ` · ${school}` : ""}`
+      : String(answers.issue || answers["当前问题"] || answers["导数最卡在哪里"] || "未填写");
   const source = resolveSourceLabel(state.currentSource);
   const shareRef = makeUniqueShareRef(fallbackId);
   const shareUrl = getSharePayload(shareRef).url;
@@ -1903,15 +1963,16 @@ function createLeadSubmission(type, answers) {
       score: intentScore,
       status: type === "trial" ? "有训练营意向" : type === "diagnosis" ? "已互动" : "新领取",
       issue,
-      note: "新提交，等待添加老师微信。",
+      note: type === "join" ? "领取预约已提交，等待确认包邮或自提安排。" : "新提交，等待添加老师微信。",
       behavior,
       answers,
       actions: [
-        "刚刚提交资料领取",
-        `分数区间：${scoreRange}`,
+        type === "join" ? `领取方式：${deliveryMethod || "未选择"}` : "刚刚提交资料领取",
+        school ? `所在学校：${school}` : `分数区间：${scoreRange}`,
+        address ? `收件地址：${address}` : "自提地点待电话或微信确认",
         `进入 ${behavior.visits} 次，停留 ${formatDuration(behavior.currentSeconds)}`,
         `专属分享链接：${shareUrl}`,
-        type === "trial" ? "预约试听" : type === "diagnosis" ? "完成诊断" : "等待进群领取资料"
+        type === "trial" ? "预约试听" : type === "diagnosis" ? "完成诊断" : "资料已为孩子预留"
       ]
     }
   };
@@ -2050,16 +2111,22 @@ function drawerContent(type) {
     `;
   }
 
-  const submitLabel = type === "diagnosis" ? "生成初步建议" : type === "trial" ? "提交预约" : "提交并领取资料";
+  const submitLabel = type === "diagnosis" ? "生成初步建议" : type === "trial" ? "提交预约" : "提交领取预约";
   return `
     <form class="form-stack" id="leadForm">
-      <div class="resource-preview">
-        <strong>你将领取</strong>
-        <span>导数专题小册子</span>
-        <span>恒成立与零点问题讲解视频</span>
-        <span>群内刷题安排</span>
-      </div>
-      ${renderLeadFormFields()}
+      ${
+        type === "join"
+          ? renderDeliveryFormFields()
+          : `
+            <div class="resource-preview">
+              <strong>你将领取</strong>
+              <span>导数专题小册子</span>
+              <span>恒成立与零点问题讲解视频</span>
+              <span>群内刷题安排</span>
+            </div>
+            ${renderLeadFormFields()}
+          `
+      }
       <div class="submit-row">
         <button type="submit">${submitLabel}</button>
         <button type="button" data-close-drawer>稍后再说</button>
@@ -2113,6 +2180,26 @@ function bindDrawerButtons(type) {
     });
   });
 
+  const deliveryOptions = document.querySelector("[data-delivery-options]");
+  if (deliveryOptions) {
+    const addressField = document.querySelector("[data-address-field]");
+    const syncDeliveryFields = () => {
+      const method = document.querySelector('[name="deliveryMethod"]:checked')?.value || "包邮到家";
+      document.querySelectorAll(".delivery-option").forEach((option) => {
+        option.classList.toggle("is-selected", option.querySelector("input")?.checked);
+      });
+      if (addressField) {
+        const needsAddress = method === "包邮到家";
+        addressField.hidden = !needsAddress;
+        addressField.querySelector("textarea").required = needsAddress;
+      }
+    };
+    deliveryOptions.querySelectorAll('[name="deliveryMethod"]').forEach((input) => {
+      input.addEventListener("change", syncDeliveryFields);
+    });
+    syncDeliveryFields();
+  }
+
   const form = document.querySelector("#leadForm");
   if (!form) return;
 
@@ -2123,7 +2210,7 @@ function bindDrawerButtons(type) {
       submitButton.disabled = true;
       submitButton.textContent = "提交中";
     }
-    const answers = readConfiguredAnswers(form);
+    const answers = type === "join" ? readDeliveryAnswers(form) : readConfiguredAnswers(form);
     const localSubmission = createLeadSubmission(type, answers);
     const serverSubmission = await syncLeadSubmissionToServer(localSubmission);
     const finalSubmission = serverSubmission || localSubmission;
@@ -2134,7 +2221,8 @@ function bindDrawerButtons(type) {
       name: finalSubmission.lead.name,
       actualJoinCount: finalSubmission.actualJoinCount || actualJoinCount,
       shareRef: finalSubmission.shareRef,
-      shareText: sharePrompt(finalSubmission.shareRef)
+      shareText: sharePrompt(finalSubmission.shareRef),
+      deliveryMethod: answers.deliveryMethod
     });
     bindSuccessPanelButtons();
     if (!serverSubmission && isPublicPage) showToast("已本机保存，服务器同步失败时请稍后刷新重试");
@@ -2387,10 +2475,10 @@ function bindChrome() {
       contentNote: "题册 + 视频",
       noticeLeft: "302 位高三学生/家长已领取",
       ctaText: "立即领取资料",
-      formHint: "填写 4 项信息，提交后进群领取题册和讲解视频。",
+      formHint: "为给孩子预留资料，请填写领取信息。",
       teacherWechat: "math-guide-2026",
       passphrase: "导数资料",
-      shareLead: "导数题容易卡住的同学很多，把这个资料入口发给他，也许正好能帮上。",
+      shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
       audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
     };
     saveState();

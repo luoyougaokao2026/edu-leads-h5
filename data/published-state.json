@@ -11,10 +11,10 @@
     "contentNote": "题册 + 视频",
     "noticeLeft": "302 位高三学生/家长已领取",
     "ctaText": "立即领取资料",
-    "formHint": "填写 4 项信息，提交后进群领取题册和讲解视频。",
+    "formHint": "为给孩子预留资料，请填写领取信息。",
     "teacherWechat": "math-guide-2026",
     "passphrase": "导数资料",
-    "shareLead": "导数题容易卡住的同学很多，把这个资料入口发给他，也许正好能帮上。",
+    "shareLead": "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
     "audience": [
       "导数基础题能做，但压轴题不稳定",
       "恒成立、零点、分类讨论容易卡住",
@@ -308,6 +308,18 @@
   ],
   "materials": [
     {
+      "type": "文字",
+      "title": "这份资料适合谁",
+      "description": "导数基础题能做，但压轴题、恒成立、零点问题不稳定的高三学生。",
+      "body": "领取后可进入资料群，按专题领取题册和讲解视频。",
+      "teaserText": "",
+      "url": "",
+      "fileName": "",
+      "fileData": "",
+      "mimeType": "",
+      "visibility": "前台预览"
+    },
+    {
       "type": "图片",
       "title": "高三导数好题封面预览",
       "description": "洛优好题系列导数专题封面，家长可第一眼看到资料质感。",
@@ -318,24 +330,59 @@
       "fileData": "",
       "mimeType": "image/png",
       "visibility": "前台预览"
+    },
+    {
+      "type": "视频",
+      "title": "导数压轴题试看",
+      "description": "3 分钟讲解片段，领取后进群看完整版。",
+      "body": "",
+      "teaserText": "",
+      "url": "",
+      "fileName": "",
+      "fileData": "",
+      "mimeType": "",
+      "visibility": "前台预览"
+    },
+    {
+      "type": "语音",
+      "title": "老师语音说明",
+      "description": "说明资料适合哪些学生，以及后续进群安排。",
+      "body": "",
+      "teaserText": "",
+      "url": "",
+      "fileName": "",
+      "fileData": "",
+      "mimeType": "",
+      "visibility": "领取后展示"
+    },
+    {
+      "type": "PDF",
+      "title": "小册子样章",
+      "description": "可放 PDF 样章或资料目录链接。",
+      "body": "",
+      "teaserText": "",
+      "url": "",
+      "fileName": "",
+      "fileData": "",
+      "mimeType": "",
+      "visibility": "前台预览"
     }
   ],
   "events": {
-    "page_view": 776,
+    "page_view": 760,
     "interest_click": 96,
     "diagnosis_click": 126,
-    "join_click": 303,
+    "join_click": 302,
     "trial_click": 38,
-    "share_click": 54,
-    "sticky_join": 4
+    "share_click": 54
   },
   "visibility": {
     "showStats": true,
     "showRecentJoins": true,
     "showAvatars": true,
-    "maskNames": true,
+    "maskNames": false,
     "showGradeSubject": true,
-    "showFullList": false,
+    "showFullList": true,
     "showCampus": false,
     "showPhone": false
   },
@@ -345,27 +392,17 @@
   },
   "sourceVisitRecorded": "direct",
   "visitors": {
-    "visitor_1780525361741_knmxab": {
-      "id": "visitor_1780525361741_knmxab",
-      "visits": 41,
-      "totalSeconds": 3774,
-      "currentSeconds": 60,
-      "maxSeconds": 1275,
-      "clicks": 5,
-      "lastSource": "自然访问",
-      "lastSeen": "06-04 11:20"
-    },
-    "visitor_1780543256155_15qwno": {
-      "id": "visitor_1780543256155_15qwno",
-      "visits": 5,
-      "totalSeconds": 881,
+    "visitor_1780569762030_olmn94": {
+      "id": "visitor_1780569762030_olmn94",
+      "visits": 2,
+      "totalSeconds": 98,
       "currentSeconds": 40,
-      "maxSeconds": 322,
+      "maxSeconds": 58,
       "clicks": 0,
       "lastSource": "自然访问",
-      "lastSeen": "06-04 16:53"
+      "lastSeen": "06-04 18:44"
     }
   },
   "selectedLead": 0,
-  "publishedAt": "2026-06-04T08:53:35.806Z"
+  "publishedAt": "2026-06-04T10:44:25.009Z"
 }
