@@ -88,7 +88,7 @@
               </section>
 
               <section class="primary-action" aria-label="资料领取">
-                <button data-track="join_click" data-open-panel="join" data-activity-field="ctaText">立即领取资料</button>
+                <button data-track="join_click" data-inline-reservation data-activity-field="ctaText">立即领取资料</button>
                 <p data-activity-field="formHint">为给孩子预留资料，请填写领取信息。</p>
               </section>
 
@@ -118,8 +118,10 @@
                 </ul>
               </section>
 
+              <div class="inline-reservation-card" id="inlineReservation" hidden></div>
+
               <div class="sticky-cta">
-                <button data-open-panel="join" data-track="sticky_join" data-activity-field="ctaText">立即领取资料</button>
+                <button data-inline-reservation data-track="sticky_join" data-activity-field="ctaText">立即领取资料</button>
               </div>
             </div>
           </div>
@@ -297,6 +299,7 @@
                           <th>客户</th>
                           <th>年级</th>
                           <th>科目</th>
+                          <th>学校</th>
                           <th>来源</th>
                           <th>意向</th>
                           <th>状态</th>
@@ -370,7 +373,7 @@
                   <label><input type="checkbox" data-visibility-setting="maskNames" checked /> 姓名脱敏展示</label>
                   <label><input type="checkbox" data-visibility-setting="showGradeSubject" checked /> 显示年级和科目</label>
                   <label><input type="checkbox" data-visibility-setting="showFullList" /> 显示完整名单</label>
-                  <label><input type="checkbox" data-visibility-setting="showCampus" /> 显示来源/校区</label>
+                  <label><input type="checkbox" data-visibility-setting="showCampus" /> 显示学生学校</label>
                   <label><input type="checkbox" data-visibility-setting="showPhone" /> 显示手机号</label>
                 </div>
               </section>

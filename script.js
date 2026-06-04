@@ -601,7 +601,8 @@ function publicJoinTitle(item) {
 function publicJoinMeta(item) {
   const lead = findLeadByName(item.name);
   const parts = [item.time];
-  if (state.visibility.showCampus) parts.push(item.source);
+  const school = item.school || lead?.school || lead?.answers?.school || lead?.answers?.["所在学校"];
+  if (state.visibility.showCampus && school) parts.push(school);
   if (state.visibility.showPhone && lead?.phone) parts.push(lead.phone);
   return parts.join(" · ");
 }
@@ -1058,6 +1059,7 @@ function renderLeadRows() {
               <td>${lead.item.name}<br><small>${lead.item.phone}</small></td>
               <td>${lead.item.grade}</td>
               <td>${lead.item.subject}</td>
+              <td>${lead.item.school || lead.item.answers?.school || lead.item.answers?.["所在学校"] || "未填写"}</td>
               <td>${lead.item.source}</td>
               <td><span class="score">${lead.item.score}</span></td>
               <td><span class="status">${lead.item.status}</span></td>
@@ -1065,7 +1067,7 @@ function renderLeadRows() {
           `
         )
         .join("")
-    : `<tr><td colspan="6" class="empty-table">当前筛选下暂无客户</td></tr>`;
+    : `<tr><td colspan="7" class="empty-table">当前筛选下暂无客户</td></tr>`;
 }
 
 function setLeadFilter(filter) {
@@ -1097,6 +1099,7 @@ function renderLeadDetail() {
       <div><span>电话</span><strong>${lead.phone}</strong></div>
       <div><span>年级</span><strong>${lead.grade}</strong></div>
       <div><span>科目</span><strong>${lead.subject}</strong></div>
+      <div><span>学生学校</span><strong>${lead.school || lead.answers?.school || lead.answers?.["所在学校"] || "未填写"}</strong></div>
       <div><span>来源</span><strong>${lead.source}</strong></div>
       <div><span>问题</span><strong>${lead.issue}</strong></div>
     </div>
@@ -1157,9 +1160,20 @@ function renderLeadDetail() {
 
 function renderLeadAnswers(lead) {
   if (!lead.answers) return `<div><span>暂无自定义字段</span><strong>未记录</strong></div>`;
-  return state.fields
+  const configured = state.fields
     .map((field) => `<div><span>${field.name}</span><strong>${lead.answers[field.key] || lead.answers[field.name] || "未填写"}</strong></div>`)
     .join("");
+  const deliveryFields = [
+    ["领取方式", lead.answers.deliveryMethod],
+    ["学生姓名", lead.answers.name || lead.answers["学生姓名"]],
+    ["所在学校", lead.answers.school || lead.answers["所在学校"]],
+    ["联系电话", lead.answers.phone || lead.answers["联系电话"]],
+    ["收件地址", lead.answers.address || lead.answers["收件地址"]]
+  ]
+    .filter(([, value]) => value)
+    .map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`)
+    .join("");
+  return deliveryFields || configured;
 }
 
 function renderChannels() {
@@ -1386,7 +1400,7 @@ function renderSuccessPanel({ name, actualJoinCount, shareRef, shareText, delive
         <div class="reserve-info">
           <div>
             <strong>自提地点</strong>
-            <span>滨湖校区 / 庐阳校区</span>
+            <span>滨湖方圆荟</span>
           </div>
           <p>具体地址和领取时间将通过电话或微信发送。</p>
         </div>
@@ -1718,7 +1732,7 @@ function downloadCsv(filename, rows) {
 
 function exportLeadData() {
   const rows = [
-    ["姓名", "手机号", "年级", "科目", "来源", "意向分", "跟进状态", "学习问题", "进入次数", "累计停留秒", "点击次数", "最后访问", "备注"],
+    ["姓名", "手机号", "年级", "科目", "学生学校", "来源", "意向分", "跟进状态", "学习问题", "进入次数", "累计停留秒", "点击次数", "最后访问", "备注"],
     ...state.leads.map((lead) => {
       const behavior = lead.behavior || {};
       return [
@@ -1726,6 +1740,7 @@ function exportLeadData() {
         lead.phone,
         lead.grade,
         lead.subject,
+        lead.school || lead.answers?.school || lead.answers?.["所在学校"] || "",
         lead.source,
         lead.score,
         lead.status,
@@ -1837,17 +1852,17 @@ function renderDeliveryFormFields() {
       <p>请选择资料领取方式：</p>
       <div class="delivery-options" data-delivery-options>
         <label class="delivery-option is-selected">
-          <input type="radio" name="deliveryMethod" value="包邮到家" checked />
+          <input type="radio" name="deliveryMethod" value="到校自提" checked />
           <span>
-            <b>包邮到家</b>
-            <small>资料寄到家，需要填写收件地址。</small>
+            <b>到校自提（滨湖方圆荟）</b>
+            <small>到滨湖方圆荟领取，老师联系确认时间。</small>
           </span>
         </label>
         <label class="delivery-option">
-          <input type="radio" name="deliveryMethod" value="到校自提" />
+          <input type="radio" name="deliveryMethod" value="包邮到家" />
           <span>
-            <b>到校自提</b>
-            <small>到滨湖 / 庐阳校区领取，老师联系确认时间。</small>
+            <b>包邮到家</b>
+            <small>资料寄到家，需要填写收件地址。</small>
           </span>
         </label>
       </div>
@@ -1892,7 +1907,7 @@ function readConfiguredAnswers(form) {
 }
 
 function readDeliveryAnswers(form) {
-  const deliveryMethod = form.querySelector('[name="deliveryMethod"]:checked')?.value || "包邮到家";
+  const deliveryMethod = form.querySelector('[name="deliveryMethod"]:checked')?.value || "到校自提";
   const name = form.querySelector('[name="studentName"]')?.value?.trim() || "";
   const school = form.querySelector('[name="school"]')?.value?.trim() || "";
   const phone = form.querySelector('[name="phone"]')?.value?.trim() || "";
@@ -1948,6 +1963,7 @@ function createLeadSubmission(type, answers) {
       name,
       grade,
       subject,
+      school,
       source,
       time: "刚刚",
       avatar: name[0] || "新",
@@ -1959,6 +1975,7 @@ function createLeadSubmission(type, answers) {
       phone,
       grade,
       subject,
+      school,
       source,
       score: intentScore,
       status: type === "trial" ? "有训练营意向" : type === "diagnosis" ? "已互动" : "新领取",
@@ -2027,6 +2044,131 @@ function bindSuccessPanelButtons() {
     await shareActivity(event.currentTarget.dataset.shareSuccess, value);
     event.currentTarget.textContent = "已生成分享";
   });
+}
+
+function renderInlineReservationForm() {
+  return `
+    <form class="form-stack inline-reservation-form" id="inlineLeadForm">
+      <div class="inline-card-head">
+        <div>
+          <strong>领取资料</strong>
+          <span>先选领取方式，再填写必要信息。</span>
+        </div>
+        <button type="button" data-close-inline-reservation aria-label="收起">×</button>
+      </div>
+      ${renderDeliveryFormFields()}
+      <button type="submit" class="inline-submit-button">提交领取预约</button>
+    </form>
+  `;
+}
+
+function renderInlineSuccessPanel({ name, shareRef, shareText, deliveryMethod }) {
+  return `
+    <div class="inline-success-card">
+      <div class="inline-card-head">
+        <div>
+          <strong>领取预约已提交</strong>
+          <span>资料已为${maskName(name)}同学预留，老师会尽快联系您确认${deliveryMethod || "领取"}安排。</span>
+        </div>
+        <button type="button" data-close-inline-reservation aria-label="收起">×</button>
+      </div>
+      <div class="reserve-info compact-reserve">
+        <div>
+          <strong>自提地点</strong>
+          <span>滨湖方圆荟</span>
+        </div>
+        <p>具体地址和领取时间将通过电话或微信发送。</p>
+      </div>
+      <button type="button" class="inline-secondary-action" data-copy-wechat>加入资料群，看讲解视频</button>
+      <button type="button" class="inline-share-action" data-share-success="${shareRef}">转发给需要的家长</button>
+      <textarea id="shareText" class="inline-share-text" readonly rows="3">${shareText}</textarea>
+      <small class="success-safe-note">分享不是领取条件，您的资料已预留。</small>
+    </div>
+  `;
+}
+
+function syncDeliveryFields(scope = document) {
+  const deliveryOptions = scope.querySelector("[data-delivery-options]");
+  if (!deliveryOptions) return;
+  const addressField = scope.querySelector("[data-address-field]");
+  const method = scope.querySelector('[name="deliveryMethod"]:checked')?.value || "到校自提";
+  scope.querySelectorAll(".delivery-option").forEach((option) => {
+    option.classList.toggle("is-selected", option.querySelector("input")?.checked);
+  });
+  if (addressField) {
+    const needsAddress = method === "包邮到家";
+    addressField.hidden = !needsAddress;
+    addressField.querySelector("textarea").required = needsAddress;
+  }
+}
+
+function bindDeliveryOptions(scope = document) {
+  const deliveryOptions = scope.querySelector("[data-delivery-options]");
+  if (!deliveryOptions) return;
+  deliveryOptions.querySelectorAll('[name="deliveryMethod"]').forEach((input) => {
+    input.addEventListener("change", () => syncDeliveryFields(scope));
+  });
+  syncDeliveryFields(scope);
+}
+
+function bindInlineReservationButtons() {
+  const container = document.querySelector("#inlineReservation");
+  if (!container) return;
+  container.querySelectorAll("[data-close-inline-reservation]").forEach((button) => {
+    button.addEventListener("click", closeInlineReservation);
+  });
+  container.querySelector("[data-copy-wechat]")?.addEventListener("click", async (event) => {
+    try {
+      await navigator.clipboard.writeText(`${state.activity.teacherWechat}\n口令：${state.activity.passphrase}`);
+      event.currentTarget.textContent = "已复制老师微信";
+    } catch {
+      event.currentTarget.textContent = state.activity.teacherWechat;
+    }
+  });
+  container.querySelector("[data-share-success]")?.addEventListener("click", async (event) => {
+    const value = container.querySelector("#shareText")?.value || "";
+    await shareActivity(event.currentTarget.dataset.shareSuccess, value);
+    event.currentTarget.textContent = "已生成分享";
+  });
+}
+
+function bindInlineReservationForm() {
+  const container = document.querySelector("#inlineReservation");
+  const form = container?.querySelector("#inlineLeadForm");
+  if (!container || !form) return;
+  bindDeliveryOptions(container);
+  bindLeadFormSubmit(form, "join", (finalSubmission, actualJoinCount, answers) => {
+    container.innerHTML = renderInlineSuccessPanel({
+      name: finalSubmission.lead.name,
+      actualJoinCount: finalSubmission.actualJoinCount || actualJoinCount,
+      shareRef: finalSubmission.shareRef,
+      shareText: sharePrompt(finalSubmission.shareRef),
+      deliveryMethod: answers.deliveryMethod
+    });
+    bindInlineReservationButtons();
+  });
+}
+
+function openInlineReservation() {
+  const container = document.querySelector("#inlineReservation");
+  if (!container) return;
+  if (!container.hidden && container.dataset.mode === "form") {
+    closeInlineReservation();
+    return;
+  }
+  container.hidden = false;
+  container.dataset.mode = "form";
+  container.innerHTML = renderInlineReservationForm();
+  bindInlineReservationForm();
+  container.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+
+function closeInlineReservation() {
+  const container = document.querySelector("#inlineReservation");
+  if (!container) return;
+  container.hidden = true;
+  container.dataset.mode = "";
+  container.innerHTML = "";
 }
 
 function openDrawer(panelKey) {
@@ -2135,6 +2277,26 @@ function drawerContent(type) {
   `;
 }
 
+function bindLeadFormSubmit(form, type, onSuccess) {
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "提交中";
+    }
+    const answers = type === "join" ? readDeliveryAnswers(form) : readConfiguredAnswers(form);
+    const localSubmission = createLeadSubmission(type, answers);
+    const serverSubmission = await syncLeadSubmissionToServer(localSubmission);
+    const finalSubmission = serverSubmission || localSubmission;
+    const actualJoinCount = applyLeadSubmission(finalSubmission);
+
+    renderAll();
+    onSuccess(finalSubmission, actualJoinCount, answers);
+    if (!serverSubmission && isPublicPage) showToast("已本机保存，服务器同步失败时请稍后刷新重试");
+  });
+}
+
 function bindDrawerButtons(type) {
   const channelForm = document.querySelector("#channelForm");
   if (channelForm) {
@@ -2180,43 +2342,12 @@ function bindDrawerButtons(type) {
     });
   });
 
-  const deliveryOptions = document.querySelector("[data-delivery-options]");
-  if (deliveryOptions) {
-    const addressField = document.querySelector("[data-address-field]");
-    const syncDeliveryFields = () => {
-      const method = document.querySelector('[name="deliveryMethod"]:checked')?.value || "包邮到家";
-      document.querySelectorAll(".delivery-option").forEach((option) => {
-        option.classList.toggle("is-selected", option.querySelector("input")?.checked);
-      });
-      if (addressField) {
-        const needsAddress = method === "包邮到家";
-        addressField.hidden = !needsAddress;
-        addressField.querySelector("textarea").required = needsAddress;
-      }
-    };
-    deliveryOptions.querySelectorAll('[name="deliveryMethod"]').forEach((input) => {
-      input.addEventListener("change", syncDeliveryFields);
-    });
-    syncDeliveryFields();
-  }
+  bindDeliveryOptions(document);
 
   const form = document.querySelector("#leadForm");
   if (!form) return;
 
-  form.addEventListener("submit", async (event) => {
-    event.preventDefault();
-    const submitButton = form.querySelector('button[type="submit"]');
-    if (submitButton) {
-      submitButton.disabled = true;
-      submitButton.textContent = "提交中";
-    }
-    const answers = type === "join" ? readDeliveryAnswers(form) : readConfiguredAnswers(form);
-    const localSubmission = createLeadSubmission(type, answers);
-    const serverSubmission = await syncLeadSubmissionToServer(localSubmission);
-    const finalSubmission = serverSubmission || localSubmission;
-    const actualJoinCount = applyLeadSubmission(finalSubmission);
-
-    renderAll();
+  bindLeadFormSubmit(form, type, (finalSubmission, actualJoinCount, answers) => {
     document.querySelector("#drawerBody").innerHTML = renderSuccessPanel({
       name: finalSubmission.lead.name,
       actualJoinCount: finalSubmission.actualJoinCount || actualJoinCount,
@@ -2225,7 +2356,6 @@ function bindDrawerButtons(type) {
       deliveryMethod: answers.deliveryMethod
     });
     bindSuccessPanelButtons();
-    if (!serverSubmission && isPublicPage) showToast("已本机保存，服务器同步失败时请稍后刷新重试");
   });
 }
 
@@ -2318,6 +2448,12 @@ function bindChrome() {
 
     const shareButton = event.target.closest("[data-share]");
     if (shareButton) shareActivity("page");
+
+    const inlineReservationButton = event.target.closest("[data-inline-reservation]");
+    if (inlineReservationButton) {
+      openInlineReservation();
+      return;
+    }
 
     const panelButton = event.target.closest("[data-open-panel]");
     if (panelButton) openDrawer(panelButton.dataset.openPanel);
