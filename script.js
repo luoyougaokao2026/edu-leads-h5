@@ -2,8 +2,28 @@ const STORAGE_KEY = "zhaosheng_prototype_state_v1";
 const VISITOR_KEY = "zhaosheng_visitor_id";
 const DEFAULT_COVER_IMAGE = "./assets/daoshu-preview-cover.png";
 const LEGACY_COVER_IMAGES = ["./assets/luoyou-daoshu-cover.jpg"];
+const TEACHER_QR_IMAGE = "./assets/teacher-qr.svg";
 const SYSTEM_AVATAR_COUNT = 60;
 const SYSTEM_AVATAR_BASE_COUNT = 24;
+const SCHOOL_SUGGESTIONS = [
+  "合肥一中",
+  "合肥八中",
+  "合肥滨湖寿春中学",
+  "合肥六中",
+  "合肥一六八中学",
+  "合肥一六八陶冲湖中学",
+  "合肥寿春中学",
+  "合肥七中",
+  "合肥十中",
+  "合肥四中",
+  "合肥九中",
+  "合肥庐阳高级中学",
+  "合肥二中",
+  "合肥三中",
+  "合肥十一中",
+  "合肥新华公学",
+  "合肥世界外国语学校"
+];
 const urlParams = new URLSearchParams(window.location.search);
 const publicVersion = urlParams.get("v") || "";
 const isAdminPreview = urlParams.get("admin") === "1" || urlParams.get("view") === "admin";
@@ -1422,7 +1442,6 @@ function renderSuccessPanel({ name, actualJoinCount, shareRef, shareText, delive
         <p class="share-note">${state.activity.shareLead}</p>
         <textarea id="shareText" readonly rows="4">${shareText}</textarea>
         <button type="button" class="primary-button full-button" data-share-success="${shareRef}">转发给需要的家长</button>
-        <small class="success-safe-note">分享不是领取条件，您的资料已预留。</small>
       </section>
     </div>
   `;
@@ -1679,9 +1698,12 @@ function updateFieldFromControl(input) {
 
 function renderMetrics() {
   const actualJoins = getActualJoinCount();
+  const remaining = getRemainingQuota();
   document.querySelector("#viewCount").textContent = state.events.page_view;
   document.querySelector("#joinCount").textContent = actualJoins;
-  document.querySelector("#remainingQuota").textContent = getRemainingQuota();
+  document.querySelector("#remainingQuota").textContent = remaining;
+  const heroRemaining = document.querySelector("#heroRemainingQuota");
+  if (heroRemaining) heroRemaining.textContent = `剩余${remaining}份`;
   const noticeLeft = document.querySelector('[data-activity-field="noticeLeft"]');
   if (noticeLeft) noticeLeft.textContent = `${actualJoins} 位高三学生/家长已领取`;
   document.querySelector("#metricViews").textContent = state.events.page_view;
@@ -1847,27 +1869,6 @@ function renderLeadFormFields() {
 
 function renderDeliveryFormFields() {
   return `
-    <div class="delivery-method-block">
-      <strong>领取方式</strong>
-      <p>请选择资料领取方式：</p>
-      <div class="delivery-options" data-delivery-options>
-        <label class="delivery-option is-selected">
-          <input type="radio" name="deliveryMethod" value="到校自提" checked />
-          <span>
-            <b>到校自提（滨湖方圆荟）</b>
-            <small>到滨湖方圆荟领取，老师联系确认时间。</small>
-          </span>
-        </label>
-        <label class="delivery-option">
-          <input type="radio" name="deliveryMethod" value="包邮到家" />
-          <span>
-            <b>包邮到家</b>
-            <small>资料寄到家，需要填写收件地址。</small>
-          </span>
-        </label>
-      </div>
-    </div>
-    <p class="form-hint-line">为给孩子预留资料，请填写领取信息。</p>
     <label>
       学生姓名
       <input name="studentName" placeholder="请填写学生姓名" required />
@@ -1884,6 +1885,122 @@ function renderDeliveryFormFields() {
       收件地址
       <textarea name="address" rows="3" placeholder="请填写收件地址" required></textarea>
     </label>
+  `;
+}
+
+function deliveryMethodCopy(method) {
+  if (method === "包邮到家") {
+    return {
+      title: "包邮到家预约",
+      subtitle: "请填写收件信息，老师确认后寄出。",
+      icon: "box",
+      helper: "资料寄到家，适合不方便到校。",
+      submit: "提交领取预约"
+    };
+  }
+  return {
+    title: "到校自提预约",
+    subtitle: "请填写领取信息，老师确认领取时间。",
+    icon: "pin",
+    helper: "滨湖方圆荟领取，老师确认时间。",
+    submit: "提交领取预约"
+  };
+}
+
+function renderDeliveryMethodPicker() {
+  return `
+    <section class="inline-method-picker" aria-label="领取方式">
+      <div class="inline-sheet-head">
+        <strong>领取方式</strong>
+        <span>请选择孩子资料领取方式</span>
+      </div>
+      <div class="method-card-list">
+        <button type="button" class="method-card" data-select-delivery="到校自提">
+          <span class="method-icon method-icon-pin" aria-hidden="true"></span>
+          <span>
+            <b>到校自提</b>
+            <small>滨湖方圆荟领取，老师确认时间</small>
+          </span>
+          <em aria-hidden="true">›</em>
+        </button>
+        <button type="button" class="method-card" data-select-delivery="包邮到家">
+          <span class="method-icon method-icon-box" aria-hidden="true"></span>
+          <span>
+            <b>包邮到家</b>
+            <small>资料寄到家，适合不方便到校</small>
+          </span>
+          <em aria-hidden="true">›</em>
+        </button>
+      </div>
+      <p class="inline-safe-note">选择后填写领取信息，资料会先为孩子预留。</p>
+    </section>
+  `;
+}
+
+function renderSchoolInput() {
+  return `
+    <label class="smart-field">
+      所在学校
+      <span class="input-shell">
+        <span class="field-icon field-icon-school" aria-hidden="true"></span>
+        <input name="school" data-school-input placeholder="输入学校名称" autocomplete="off" required />
+      </span>
+      <div class="school-suggestions" data-school-suggestions hidden></div>
+    </label>
+  `;
+}
+
+function renderDeliveryInfoForm(method = "到校自提") {
+  const copy = deliveryMethodCopy(method);
+  const needsAddress = method === "包邮到家";
+  return `
+    <form class="form-stack inline-reservation-form" id="inlineLeadForm">
+      <input type="hidden" name="deliveryMethod" value="${method}" />
+      <div class="inline-form-head">
+        <button type="button" class="inline-back-button" data-back-delivery aria-label="返回领取方式">‹</button>
+        <div>
+          <strong>${copy.title}</strong>
+          <span>${copy.subtitle}</span>
+        </div>
+        <button type="button" class="inline-close-button" data-close-inline-reservation aria-label="收起">×</button>
+      </div>
+      <label class="smart-field">
+        学生姓名
+        <span class="input-shell">
+          <span class="field-icon field-icon-user" aria-hidden="true"></span>
+          <input name="studentName" placeholder="请输入学生姓名" autocomplete="name" required />
+        </span>
+      </label>
+      ${renderSchoolInput()}
+      <label class="smart-field">
+        联系电话
+        <span class="input-shell">
+          <span class="field-icon field-icon-phone" aria-hidden="true"></span>
+          <input name="phone" placeholder="请输入手机号" inputmode="numeric" maxlength="11" autocomplete="tel" required />
+        </span>
+        <small>数字键盘，便于填写</small>
+      </label>
+      ${
+        needsAddress
+          ? `<label class="smart-field">
+              收件地址
+              <span class="input-shell textarea-shell">
+                <span class="field-icon field-icon-location" aria-hidden="true"></span>
+                <textarea name="address" rows="3" maxlength="200" placeholder="请输入详细收件地址" required></textarea>
+                <em class="char-count" data-address-count>0/200</em>
+              </span>
+            </label>`
+          : `<div class="pickup-location-card">
+              <span class="method-icon method-icon-pin" aria-hidden="true"></span>
+              <div>
+                <b>自提地点</b>
+                <small>滨湖方圆荟，具体时间老师确认后通知。</small>
+              </div>
+            </div>`
+      }
+      <button type="submit" class="inline-submit-button">${copy.submit}</button>
+      <p class="inline-safe-note">提交后先为孩子预留资料，老师会尽快联系确认。</p>
+    </form>
   `;
 }
 
@@ -1907,7 +2024,7 @@ function readConfiguredAnswers(form) {
 }
 
 function readDeliveryAnswers(form) {
-  const deliveryMethod = form.querySelector('[name="deliveryMethod"]:checked')?.value || "到校自提";
+  const deliveryMethod = form.querySelector('[name="deliveryMethod"]:checked')?.value || form.querySelector('[name="deliveryMethod"]')?.value || "到校自提";
   const name = form.querySelector('[name="studentName"]')?.value?.trim() || "";
   const school = form.querySelector('[name="school"]')?.value?.trim() || "";
   const phone = form.querySelector('[name="phone"]')?.value?.trim() || "";
@@ -2047,43 +2164,30 @@ function bindSuccessPanelButtons() {
 }
 
 function renderInlineReservationForm() {
-  return `
-    <form class="form-stack inline-reservation-form" id="inlineLeadForm">
-      <div class="inline-card-head">
-        <div>
-          <strong>领取资料</strong>
-          <span>先选领取方式，再填写必要信息。</span>
-        </div>
-        <button type="button" data-close-inline-reservation aria-label="收起">×</button>
-      </div>
-      ${renderDeliveryFormFields()}
-      <button type="submit" class="inline-submit-button">提交领取预约</button>
-    </form>
-  `;
+  return renderDeliveryMethodPicker();
 }
 
-function renderInlineSuccessPanel({ name, shareRef, shareText, deliveryMethod }) {
+function renderInlineSuccessPanel({ shareRef, shareText }) {
   return `
-    <div class="inline-success-card">
-      <div class="inline-card-head">
-        <div>
-          <strong>领取预约已提交</strong>
-          <span>资料已为${maskName(name)}同学预留，老师会尽快联系您确认${deliveryMethod || "领取"}安排。</span>
-        </div>
-        <button type="button" data-close-inline-reservation aria-label="收起">×</button>
+    <section class="inline-success-card" aria-label="领取预约已提交">
+      <button type="button" class="inline-close-button success-close" data-close-inline-reservation aria-label="收起">×</button>
+      <div class="success-check-large" aria-hidden="true">✓</div>
+      <div class="success-title-copy">
+        <strong>领取预约已提交</strong>
+        <span>资料已为孩子预留</span>
       </div>
-      <div class="reserve-info compact-reserve">
-        <div>
-          <strong>自提地点</strong>
-          <span>滨湖方圆荟</span>
-        </div>
-        <p>具体地址和领取时间将通过电话或微信发送。</p>
+      <div class="success-contact-card">
+        <span class="field-icon field-icon-bell" aria-hidden="true"></span>
+        <p>老师会尽快联系您确认领取安排。</p>
       </div>
-      <button type="button" class="inline-secondary-action" data-copy-wechat>加入资料群，看讲解视频</button>
-      <button type="button" class="inline-share-action" data-share-success="${shareRef}">转发给需要的家长</button>
+      <div class="success-divider"><span>或</span></div>
+      <div class="qr-section">
+        <strong>长按二维码添加老师</strong>
+        <span>发送“${state.activity.passphrase || "导数资料"}”，领取题册和讲解视频</span>
+        <img src="${TEACHER_QR_IMAGE}" alt="老师二维码" />
+      </div>
       <textarea id="shareText" class="inline-share-text" readonly rows="3">${shareText}</textarea>
-      <small class="success-safe-note">分享不是领取条件，您的资料已预留。</small>
-    </div>
+    </section>
   `;
 }
 
@@ -2130,16 +2234,66 @@ function bindInlineReservationButtons() {
     await shareActivity(event.currentTarget.dataset.shareSuccess, value);
     event.currentTarget.textContent = "已生成分享";
   });
+  container.querySelectorAll("[data-select-delivery]").forEach((button) => {
+    button.addEventListener("click", () => showInlineDeliveryForm(button.dataset.selectDelivery));
+  });
+  container.querySelector("[data-back-delivery]")?.addEventListener("click", showInlineDeliveryPicker);
+}
+
+function renderSchoolSuggestions(value = "") {
+  const keyword = value.trim();
+  const matched = SCHOOL_SUGGESTIONS.filter((school) => !keyword || school.includes(keyword)).slice(0, 3);
+  return matched
+    .map(
+      (school) => `
+        <button type="button" data-school-option="${school}">
+          <span class="field-icon field-icon-school" aria-hidden="true"></span>
+          ${school}
+        </button>
+      `
+    )
+    .join("");
+}
+
+function bindSchoolAutocomplete(scope = document) {
+  const input = scope.querySelector("[data-school-input]");
+  const list = scope.querySelector("[data-school-suggestions]");
+  if (!input || !list) return;
+
+  const update = () => {
+    list.innerHTML = renderSchoolSuggestions(input.value);
+    list.hidden = !list.innerHTML;
+  };
+
+  input.addEventListener("focus", update);
+  input.addEventListener("input", update);
+  list.addEventListener("click", (event) => {
+    const option = event.target.closest("[data-school-option]");
+    if (!option) return;
+    input.value = option.dataset.schoolOption;
+    list.hidden = true;
+  });
+}
+
+function bindAddressCounter(scope = document) {
+  const textarea = scope.querySelector("textarea[name='address']");
+  const counter = scope.querySelector("[data-address-count]");
+  if (!textarea || !counter) return;
+  const update = () => {
+    counter.textContent = `${textarea.value.length}/200`;
+  };
+  textarea.addEventListener("input", update);
+  update();
 }
 
 function bindInlineReservationForm() {
   const container = document.querySelector("#inlineReservation");
   const form = container?.querySelector("#inlineLeadForm");
   if (!container || !form) return;
-  bindDeliveryOptions(container);
+  bindSchoolAutocomplete(container);
+  bindAddressCounter(container);
   bindLeadFormSubmit(form, "join", (finalSubmission, actualJoinCount, answers) => {
     container.innerHTML = renderInlineSuccessPanel({
-      name: finalSubmission.lead.name,
       actualJoinCount: finalSubmission.actualJoinCount || actualJoinCount,
       shareRef: finalSubmission.shareRef,
       shareText: sharePrompt(finalSubmission.shareRef),
@@ -2149,24 +2303,47 @@ function bindInlineReservationForm() {
   });
 }
 
-function openInlineReservation() {
+function showInlineDeliveryPicker() {
   const container = document.querySelector("#inlineReservation");
   if (!container) return;
-  if (!container.hidden && container.dataset.mode === "form") {
+  container.dataset.mode = "picker";
+  container.innerHTML = renderDeliveryMethodPicker();
+  bindInlineReservationButtons();
+}
+
+function showInlineDeliveryForm(method) {
+  const container = document.querySelector("#inlineReservation");
+  if (!container) return;
+  container.dataset.mode = "form";
+  container.innerHTML = renderDeliveryInfoForm(method);
+  bindInlineReservationButtons();
+  bindInlineReservationForm();
+  container.querySelector("[name='studentName']")?.focus({ preventScroll: true });
+}
+
+function openInlineReservation() {
+  const container = document.querySelector("#inlineReservation");
+  const backdrop = document.querySelector("#inlineReservationBackdrop");
+  const page = document.querySelector(".h5-page");
+  if (!container) return;
+  if (!container.hidden && container.dataset.mode === "picker") {
     closeInlineReservation();
     return;
   }
   container.hidden = false;
-  container.dataset.mode = "form";
-  container.innerHTML = renderInlineReservationForm();
-  bindInlineReservationForm();
-  container.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (backdrop) backdrop.hidden = false;
+  page?.classList.add("reservation-open");
+  showInlineDeliveryPicker();
 }
 
 function closeInlineReservation() {
   const container = document.querySelector("#inlineReservation");
+  const backdrop = document.querySelector("#inlineReservationBackdrop");
+  const page = document.querySelector(".h5-page");
   if (!container) return;
   container.hidden = true;
+  if (backdrop) backdrop.hidden = true;
+  page?.classList.remove("reservation-open");
   container.dataset.mode = "";
   container.innerHTML = "";
 }
@@ -2452,6 +2629,11 @@ function bindChrome() {
     const inlineReservationButton = event.target.closest("[data-inline-reservation]");
     if (inlineReservationButton) {
       openInlineReservation();
+      return;
+    }
+
+    if (event.target.closest("#inlineReservationBackdrop")) {
+      closeInlineReservation();
       return;
     }
 

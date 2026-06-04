@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" role="img" aria-label="老师二维码占位图">
+  <rect width="240" height="240" fill="#fff"/>
+  <g fill="#111">
+    <rect x="14" y="14" width="56" height="56" rx="4"/>
+    <rect x="170" y="14" width="56" height="56" rx="4"/>
+    <rect x="14" y="170" width="56" height="56" rx="4"/>
+    <rect x="26" y="26" width="32" height="32" fill="#fff"/>
+    <rect x="182" y="26" width="32" height="32" fill="#fff"/>
+    <rect x="26" y="182" width="32" height="32" fill="#fff"/>
+    <rect x="34" y="34" width="16" height="16"/>
+    <rect x="190" y="34" width="16" height="16"/>
+    <rect x="34" y="190" width="16" height="16"/>
+    <rect x="86" y="14" width="12" height="12"/>
+    <rect x="110" y="14" width="24" height="12"/>
+    <rect x="146" y="14" width="12" height="24"/>
+    <rect x="86" y="38" width="24" height="12"/>
+    <rect x="122" y="38" width="12" height="24"/>
+    <rect x="146" y="50" width="12" height="12"/>
+    <rect x="86" y="74" width="12" height="24"/>
+    <rect x="110" y="74" width="12" height="12"/>
+    <rect x="134" y="74" width="36" height="12"/>
+    <rect x="194" y="86" width="12" height="24"/>
+    <rect x="14" y="86" width="24" height="12"/>
+    <rect x="50" y="86" width="24" height="12"/>
+    <rect x="86" y="98" width="48" height="12"/>
+    <rect x="146" y="98" width="12" height="24"/>
+    <rect x="170" y="98" width="24" height="12"/>
+    <rect x="38" y="110" width="12" height="24"/>
+    <rect x="62" y="122" width="36" height="12"/>
+    <rect x="110" y="122" width="12" height="24"/>
+    <rect x="134" y="134" width="36" height="12"/>
+    <rect x="194" y="122" width="12" height="24"/>
+    <rect x="86" y="158" width="12" height="24"/>
+    <rect x="110" y="158" width="48" height="12"/>
+    <rect x="170" y="158" width="12" height="12"/>
+    <rect x="194" y="158" width="32" height="12"/>
+    <rect x="86" y="194" width="24" height="12"/>
+    <rect x="122" y="182" width="12" height="36"/>
+    <rect x="146" y="194" width="24" height="12"/>
+    <rect x="182" y="182" width="12" height="24"/>
+    <rect x="206" y="194" width="20" height="32"/>
+    <rect x="86" y="218" width="12" height="8"/>
+    <rect x="134" y="218" width="48" height="8"/>
+  </g>
+  <rect x="82" y="82" width="76" height="76" rx="16" fill="#fff"/>
+  <text x="120" y="110" text-anchor="middle" font-family="Arial, sans-serif" font-size="18" font-weight="700" fill="#d1192a">LOVE</text>
+  <text x="120" y="133" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" font-weight="800" fill="#0b3a8b">U</text>
+  <text x="120" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="#222">洛优高考</text>
+</svg>

@@ -206,10 +206,17 @@ h1 {
   font-size: 14px;
 }
 
-.share-chip {
+.hero-actions {
   position: absolute;
   top: 16px;
   right: 14px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.quota-chip,
+.share-chip {
   padding: 7px 11px;
   border-radius: 999px;
   color: var(--green-dark);
@@ -718,23 +725,320 @@ h1 {
   width: 100%;
 }
 
+.inline-reservation-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 27;
+  background: rgba(8, 18, 13, 0.5);
+  backdrop-filter: blur(2px);
+}
+
+.inline-reservation-backdrop[hidden] {
+  display: none;
+}
+
 .inline-reservation-card {
   position: absolute;
-  right: 14px;
-  bottom: 78px;
-  left: 14px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 28;
-  max-height: calc(100% - 108px);
+  max-height: calc(100% - 44px);
   overflow-y: auto;
-  padding: 14px;
-  border: 1px solid #dfe8e3;
-  border-radius: 8px;
+  padding: 38px 22px 20px;
+  border: 1px solid #eef2ef;
+  border-radius: 24px 24px 0 0;
   background: white;
-  box-shadow: 0 12px 30px rgba(25, 48, 35, 0.16);
+  box-shadow: 0 -16px 42px rgba(15, 33, 24, 0.2);
+}
+
+.inline-reservation-card::before {
+  content: "";
+  position: absolute;
+  top: 13px;
+  left: 50%;
+  width: 46px;
+  height: 5px;
+  border-radius: 999px;
+  background: #dfe3e5;
+  transform: translateX(-50%);
 }
 
 .inline-reservation-card[hidden] {
   display: none;
+}
+
+.reservation-open .sticky-cta {
+  display: none;
+}
+
+.inline-sheet-head,
+.success-title-copy,
+.qr-section {
+  display: grid;
+  gap: 8px;
+  text-align: center;
+}
+
+.inline-sheet-head strong,
+.inline-form-head strong,
+.success-title-copy strong,
+.qr-section strong {
+  color: #101714;
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.inline-sheet-head span,
+.inline-form-head span,
+.success-title-copy span,
+.qr-section span,
+.inline-safe-note {
+  color: #7c8580;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.method-card-list {
+  display: grid;
+  gap: 12px;
+  margin: 28px 0 22px;
+}
+
+.method-card {
+  display: grid;
+  grid-template-columns: 58px 1fr auto;
+  gap: 18px;
+  align-items: center;
+  width: 100%;
+  min-height: 96px;
+  padding: 18px;
+  border: 1px solid #dfe5e1;
+  border-radius: 10px;
+  color: #111916;
+  background: #fff;
+  text-align: left;
+  box-shadow: 0 8px 18px rgba(18, 53, 35, 0.04);
+}
+
+.method-card b,
+.method-card small {
+  display: block;
+}
+
+.method-card b {
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.method-card small {
+  margin-top: 8px;
+  color: #818985;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.method-card em {
+  color: #7d8580;
+  font-style: normal;
+  font-size: 36px;
+  font-weight: 300;
+}
+
+.method-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  background: #edf8f1;
+}
+
+.method-icon::before {
+  color: #1ba75a;
+  font-size: 28px;
+  font-weight: 900;
+}
+
+.method-icon-pin::before {
+  content: "●";
+}
+
+.method-icon-box::before {
+  content: "□";
+}
+
+.inline-safe-note {
+  margin: 0;
+  text-align: center;
+}
+
+.inline-safe-note::before {
+  content: "◇";
+  margin-right: 6px;
+  color: #22a864;
+  font-weight: 900;
+}
+
+.inline-form-head {
+  display: grid;
+  grid-template-columns: 34px 1fr 34px;
+  gap: 8px;
+  align-items: start;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.inline-back-button,
+.inline-close-button {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #717b76;
+  background: #f1f5f3;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.inline-close-button {
+  font-size: 20px;
+}
+
+.smart-field {
+  position: relative;
+}
+
+.input-shell {
+  position: relative;
+  display: grid;
+  align-items: center;
+}
+
+.input-shell input,
+.input-shell textarea {
+  padding-left: 44px;
+  min-height: 48px;
+  border-radius: 7px;
+  background: white;
+}
+
+.input-shell input:focus,
+.input-shell textarea:focus {
+  border-color: #18aa58;
+  outline: 0;
+  box-shadow: 0 0 0 2px rgba(24, 170, 88, 0.1);
+}
+
+.input-shell textarea {
+  min-height: 92px;
+  padding-top: 13px;
+  padding-right: 62px;
+  resize: none;
+}
+
+.field-icon {
+  position: absolute;
+  left: 14px;
+  z-index: 1;
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: #a2aaa6;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.textarea-shell .field-icon {
+  top: 15px;
+}
+
+.field-icon-user::before {
+  content: "○";
+}
+
+.field-icon-school::before {
+  content: "▥";
+}
+
+.field-icon-phone::before {
+  content: "⌕";
+}
+
+.field-icon-location::before {
+  content: "◎";
+}
+
+.field-icon-bell::before {
+  content: "◌";
+  color: #18a955;
+}
+
+.school-suggestions {
+  position: absolute;
+  right: 0;
+  left: 0;
+  z-index: 40;
+  overflow: hidden;
+  border: 1px solid #dfe5e1;
+  border-radius: 0 0 8px 8px;
+  background: white;
+  box-shadow: 0 12px 24px rgba(25, 48, 35, 0.16);
+}
+
+.school-suggestions button {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  padding: 13px 14px 13px 46px;
+  color: #1f2b25;
+  background: white;
+  text-align: left;
+  font-weight: 800;
+}
+
+.school-suggestions .field-icon {
+  position: static;
+  color: #1ba75a;
+}
+
+.char-count {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  color: #7c8580;
+  font-style: normal;
+  font-size: 12px;
+}
+
+.pickup-location-card,
+.success-contact-card {
+  display: grid;
+  grid-template-columns: 44px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid #dfe5e1;
+  border-radius: 8px;
+  background: #fbfcfb;
+}
+
+.pickup-location-card .method-icon {
+  width: 44px;
+  height: 44px;
+}
+
+.pickup-location-card b,
+.pickup-location-card small {
+  display: block;
+}
+
+.pickup-location-card small {
+  margin-top: 4px;
+  color: #7c8580;
+  font-size: 12px;
 }
 
 .inline-card-head {
@@ -772,7 +1076,7 @@ h1 {
 }
 
 .inline-reservation-form {
-  gap: 11px;
+  gap: 15px;
 }
 
 .inline-reservation-form .delivery-method-block {
@@ -791,6 +1095,9 @@ h1 {
 .inline-submit-button {
   color: white;
   background: #17a743;
+  min-height: 52px;
+  border-radius: 8px;
+  font-size: 17px;
 }
 
 .inline-secondary-action {
@@ -807,11 +1114,69 @@ h1 {
 
 .inline-success-card {
   display: grid;
-  gap: 10px;
+  gap: 18px;
+  justify-items: center;
+  padding: 18px 0 10px;
+  text-align: center;
 }
 
-.compact-reserve {
-  margin-top: 0;
+.success-close {
+  position: absolute;
+  top: 24px;
+  right: 18px;
+}
+
+.success-check-large {
+  display: grid;
+  place-items: center;
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  color: #10a64f;
+  background: #e7f7ec;
+  font-size: 42px;
+  font-weight: 900;
+}
+
+.success-title-copy strong {
+  font-size: 22px;
+}
+
+.success-contact-card {
+  width: 84%;
+  min-height: 54px;
+  text-align: left;
+}
+
+.success-contact-card p {
+  margin: 0;
+  color: #48524d;
+  font-size: 14px;
+}
+
+.success-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 18px;
+  align-items: center;
+  width: 82%;
+  color: #8d9691;
+}
+
+.success-divider::before,
+.success-divider::after {
+  content: "";
+  height: 1px;
+  background: #e2e7e4;
+}
+
+.qr-section img {
+  width: 172px;
+  max-width: 58vw;
+  margin: 8px auto 0;
+  border: 10px solid white;
+  border-radius: 10px;
+  box-shadow: 0 10px 24px rgba(15, 33, 24, 0.16);
 }
 
 .inline-share-text {
@@ -3402,9 +3767,13 @@ tbody tr.is-selected {
     line-height: 1.45;
   }
 
-  .share-chip {
+  .hero-actions {
     top: 18px;
     right: 16px;
+  }
+
+  .share-chip,
+  .quota-chip {
     padding: 6px 10px;
     border: 1px solid #dfece3;
     background: #fbfdfb;
@@ -3607,13 +3976,23 @@ tbody tr.is-selected {
 
 .public-page .share-chip {
   display: inline-flex;
-  top: 16px;
-  right: 14px;
   padding: 7px 11px;
   border: 0;
   color: var(--green-dark);
   background: rgba(255, 255, 255, 0.9);
   font-weight: 800;
+}
+
+.public-page .hero-actions {
+  top: 16px;
+  right: 14px;
+}
+
+.public-page .quota-chip {
+  display: inline-flex;
+  padding: 7px 11px;
+  color: var(--green-dark);
+  background: rgba(255, 255, 255, 0.9);
 }
 
 .public-page .stats-band {
@@ -3801,6 +4180,27 @@ tbody tr.is-selected {
   margin: 0 auto;
   padding: 10px 12px max(10px, env(safe-area-inset-bottom));
   box-shadow: 0 -10px 24px rgba(23, 32, 27, 0.12);
+}
+
+.public-page .reservation-open .sticky-cta {
+  display: none;
+}
+
+.public-page .inline-reservation-backdrop {
+  position: fixed;
+  z-index: 70;
+}
+
+.public-page .inline-reservation-card {
+  position: fixed;
+  right: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 71;
+  width: min(100%, 430px);
+  max-height: calc(100dvh - 70px);
+  margin: 0 auto;
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
 }
 
 .public-page .content-preview-card.is-media-card .material-thumb {
