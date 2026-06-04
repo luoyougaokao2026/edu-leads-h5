@@ -1,0 +1,2458 @@
+const STORAGE_KEY = "zhaosheng_prototype_state_v1";
+const VISITOR_KEY = "zhaosheng_visitor_id";
+const DEFAULT_COVER_IMAGE = "./assets/daoshu-preview-cover.png";
+const LEGACY_COVER_IMAGES = ["./assets/luoyou-daoshu-cover.jpg"];
+const SYSTEM_AVATAR_COUNT = 60;
+const SYSTEM_AVATAR_BASE_COUNT = 24;
+const urlParams = new URLSearchParams(window.location.search);
+const publicVersion = urlParams.get("v") || "";
+const isAdminPreview = urlParams.get("admin") === "1" || urlParams.get("view") === "admin";
+const isPublicPage =
+  !isAdminPreview &&
+  (window.location.hostname.includes("trycloudflare.com") ||
+    publicVersion.includes("clean") ||
+    publicVersion.includes("public") ||
+    publicVersion.includes("spine"));
+const publicActivityCopy = {
+  tag: "高三数学资料",
+  title: "导数专题资料包",
+  subtitle: "50道精选好题 + 配套讲解片段"
+};
+if (isPublicPage) {
+  document.documentElement.classList.add("public-page");
+}
+if (isAdminPreview) {
+  document.documentElement.classList.add("admin-preview");
+}
+
+const defaultState = {
+  activity: {
+    tag: "高三数学资料",
+    title: "高三导数专题资料包领取",
+    subtitle: "精选往季保校训练营导数题，进群领取小册子和配套讲解视频。",
+    joinLabel: "已领取",
+    totalQuota: "50",
+    deadline: "2026-06-10T22:00",
+    adminName: "高三导数资料包",
+    contentTitle: "资料预览",
+    contentNote: "题册 + 视频",
+    noticeLeft: "302 位高三学生/家长已领取",
+    ctaText: "立即领取资料",
+    formHint: "填写 4 项信息，提交后进群领取题册和讲解视频。",
+    teacherWechat: "math-guide-2026",
+    passphrase: "导数资料",
+    shareLead: "导数题容易卡住的同学很多，把这个资料入口发给他，也许正好能帮上。",
+    audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
+  },
+  followStatuses: ["新领取", "已加微信", "已进群", "已发资料", "已互动", "有训练营意向", "已报名", "无效"],
+  joins: [
+    { id: 302, name: "肖雅雯", grade: "高三", subject: "数学", source: "张老师朋友圈", time: "刚刚", avatar: "肖", avatarColor: "#2f9b57" },
+    { id: 301, name: "陈伟", grade: "高三", subject: "数学", source: "微信群", time: "2分钟前", avatar: "陈", avatarColor: "#3b82c4" },
+    { id: 300, name: "李同学", grade: "高三", subject: "数学", source: "抖音短视频", time: "5分钟前", avatar: "李", avatarColor: "#d97706" },
+    { id: 299, name: "王子涵", grade: "高三", subject: "数学", source: "小红书", time: "8分钟前", avatar: "王", avatarColor: "#9b5bd6" },
+    { id: 298, name: "张俊", grade: "高三", subject: "数学", source: "老师私发", time: "12分钟前", avatar: "张", avatarColor: "#0f8f8f" }
+  ],
+  leads: [
+    {
+      name: "肖雅雯",
+      phone: "18130050515",
+      grade: "高三",
+      subject: "数学",
+      source: "张老师朋友圈",
+      score: 92,
+      status: "已进群",
+      issue: "导数压轴题不稳",
+      note: "已进资料群，适合推导数专题训练。",
+      actions: ["访问 3 次", "完成诊断", "进群接龙", "点击预约试听"]
+    },
+    {
+      name: "陈伟",
+      phone: "18905694821",
+      grade: "高三",
+      subject: "数学",
+      source: "微信群",
+      score: 78,
+      status: "已加微信",
+      issue: "恒成立分类讨论",
+      note: "已加微信，等老师拉群。",
+      actions: ["访问 2 次", "查看资料内容", "进群接龙"]
+    },
+    {
+      name: "李同学",
+      phone: "13956092344",
+      grade: "高三",
+      subject: "数学",
+      source: "抖音短视频",
+      score: 64,
+      status: "已发资料",
+      issue: "零点问题卡住",
+      note: "资料已私发，后续观察是否看视频。",
+      actions: ["访问 1 次", "领取资料", "资料领取"]
+    },
+    {
+      name: "王子涵",
+      phone: "17305691230",
+      grade: "高三",
+      subject: "数学",
+      source: "小红书",
+      score: 57,
+      status: "新领取",
+      issue: "导数复习规划不清",
+      note: "还未添加老师微信。",
+      actions: ["访问 1 次", "痛点投票"]
+    },
+    {
+      name: "刘同学",
+      phone: "18600001234",
+      grade: "高三",
+      subject: "数学",
+      source: "肖雅雯分享",
+      score: 71,
+      status: "新领取",
+      issue: "恒成立分类讨论",
+      note: "由肖雅雯分享带入，等待添加老师微信。",
+      actions: ["通过肖雅雯分享进入", "领取导数资料"]
+    },
+    {
+      name: "赵同学",
+      phone: "18600005678",
+      grade: "高三",
+      subject: "数学",
+      source: "肖雅雯分享",
+      score: 69,
+      status: "已加微信",
+      issue: "函数构造不会",
+      note: "由肖雅雯分享带入，已加老师微信。",
+      actions: ["通过肖雅雯分享进入", "已加微信"]
+    },
+    {
+      name: "周同学",
+      phone: "18600009876",
+      grade: "高三",
+      subject: "数学",
+      source: "陈伟分享",
+      score: 66,
+      status: "已进群",
+      issue: "零点问题卡住",
+      note: "由陈伟分享带入，已进入资料群。",
+      actions: ["通过陈伟分享进入", "已进资料群"]
+    }
+  ],
+  channels: [
+    { type: "老师渠道", name: "张老师朋友圈", source: "teacher_zhang", views: 218, joins: 86, shares: 14, leads: ["肖雅雯", "陈伟", "张俊"] },
+    { type: "社群渠道", name: "微信群", source: "wechat_group_01", views: 164, joins: 72, shares: 9, leads: ["陈伟", "李同学"] },
+    { type: "短视频渠道", name: "抖音导数视频 01", source: "douyin_derivative_001", views: 201, joins: 59, shares: 18, leads: ["李同学"] },
+    { type: "图文渠道", name: "小红书笔记", source: "xiaohongshu_note_0529", views: 93, joins: 31, shares: 7, leads: ["王子涵"] },
+    { type: "家长分享", name: "肖雅雯分享", source: "user_303", views: 42, joins: 11, shares: 4, leads: ["刘同学", "赵同学"] },
+    { type: "家长分享", name: "陈伟分享", source: "user_301", views: 28, joins: 6, shares: 2, leads: ["周同学"] }
+  ],
+  fields: [
+    { key: "name", name: "学生姓名或昵称", type: "填空", required: true, options: [] },
+    { key: "phone", name: "联系方式", type: "填空", required: true, options: [] },
+    { key: "scoreRange", name: "最近数学分数区间", type: "单选", required: false, options: ["90 分以下", "90-110 分", "110-130 分", "130 分以上"] },
+    { key: "issue", name: "导数最卡在哪里", type: "单选", required: false, options: ["导数压轴题不稳", "恒成立分类讨论", "零点问题卡住", "函数构造不会"] }
+  ],
+  materials: [
+    {
+      type: "文字",
+      title: "这份资料适合谁",
+      description: "导数基础题能做，但压轴题、恒成立、零点问题不稳定的高三学生。",
+      body: "领取后可进入资料群，按专题领取题册和讲解视频。",
+      teaserText: "",
+      url: "",
+      fileName: "",
+      fileData: "",
+      mimeType: "",
+      visibility: "前台预览"
+    },
+    {
+      type: "图片",
+      title: "高三导数好题封面预览",
+      description: "洛优好题系列导数专题封面，家长可第一眼看到资料质感。",
+      body: "",
+      teaserText: "",
+      url: DEFAULT_COVER_IMAGE,
+      fileName: "daoshu-preview-cover.png",
+      fileData: "",
+      mimeType: "image/png",
+      visibility: "前台预览"
+    },
+    {
+      type: "视频",
+      title: "导数压轴题试看",
+      description: "3 分钟讲解片段，领取后进群看完整版。",
+      body: "",
+      teaserText: "",
+      url: "",
+      fileName: "",
+      fileData: "",
+      mimeType: "",
+      visibility: "前台预览"
+    },
+    {
+      type: "语音",
+      title: "老师语音说明",
+      description: "说明资料适合哪些学生，以及后续进群安排。",
+      body: "",
+      teaserText: "",
+      url: "",
+      fileName: "",
+      fileData: "",
+      mimeType: "",
+      visibility: "领取后展示"
+    },
+    {
+      type: "PDF",
+      title: "小册子样章",
+      description: "可放 PDF 样章或资料目录链接。",
+      body: "",
+      teaserText: "",
+      url: "",
+      fileName: "",
+      fileData: "",
+      mimeType: "",
+      visibility: "前台预览"
+    }
+  ],
+  events: {
+    page_view: 760,
+    interest_click: 96,
+    diagnosis_click: 126,
+    join_click: 302,
+    trial_click: 38,
+    share_click: 54
+  },
+  visibility: {
+    showStats: true,
+    showRecentJoins: true,
+    showAvatars: true,
+    maskNames: true,
+    showGradeSubject: true,
+    showFullList: false,
+    showCampus: false,
+    showPhone: false
+  },
+  currentSource: null,
+  sourceVisitRecorded: false,
+  visitors: {},
+  selectedLead: 0
+};
+
+const state = loadState();
+const visitSession = {
+  id: getVisitorId(),
+  startedAt: Date.now(),
+  lastSyncedAt: Date.now(),
+  serverSourceRecorded: null,
+  recorded: false
+};
+let joinAutoScrollTimer = null;
+let joinAutoScrollPaused = false;
+let joinAutoScrollResumeTimer = null;
+let joinAutoScrollInternal = false;
+let activeLeadFilter = "全部";
+let latestPublishedAt = "";
+
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    return normalizeStateSnapshot(saved);
+  } catch {
+    return structuredClone(defaultState);
+  }
+}
+
+function normalizeStateSnapshot(snapshot) {
+  if (!snapshot) return structuredClone(defaultState);
+  const merged = {
+    ...structuredClone(defaultState),
+    ...snapshot,
+    activity: { ...defaultState.activity, ...(snapshot.activity || {}) },
+    events: { ...defaultState.events, ...(snapshot.events || {}) },
+    visibility: { ...defaultState.visibility, ...(snapshot.visibility || {}) }
+  };
+  if (merged.activity.contentTitle === "资料包内容") merged.activity.contentTitle = defaultState.activity.contentTitle;
+  if (merged.activity.contentNote === "文字 / 图片 / 视频 / PDF") merged.activity.contentNote = defaultState.activity.contentNote;
+  merged.leads = mergeByKey(defaultState.leads, snapshot.leads || [], "name");
+  merged.channels = mergeByKey(defaultState.channels, snapshot.channels || [], "source");
+  merged.fields = normalizeFields(snapshot.fields || defaultState.fields);
+  merged.materials = mergeMaterials(Array.isArray(snapshot.materials) ? snapshot.materials : defaultState.materials, !Array.isArray(snapshot.materials));
+  return merged;
+}
+
+function replaceState(snapshot) {
+  const normalized = normalizeStateSnapshot(snapshot);
+  Object.keys(state).forEach((key) => delete state[key]);
+  Object.assign(state, normalized);
+}
+
+function mergeByKey(defaultItems, savedItems, key) {
+  const merged = [...savedItems];
+  defaultItems.forEach((item) => {
+    if (!merged.some((saved) => saved[key] === item[key])) merged.push(structuredClone(item));
+  });
+  return merged;
+}
+
+function saveState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function getPublishSnapshot() {
+  return {
+    ...JSON.parse(JSON.stringify(state)),
+    publishedAt: new Date().toISOString()
+  };
+}
+
+async function fetchPublishedState() {
+  if (window.location.protocol === "file:") return null;
+  const endpoints = ["/api/state", "./data/published-state.json"];
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(`${endpoint}${endpoint.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" });
+      if (!response.ok) continue;
+      const snapshot = await response.json();
+      if (snapshot?.activity) return snapshot;
+    } catch {
+      // Static file previews and file:// previews may not expose a publish endpoint.
+    }
+  }
+  return null;
+}
+
+async function hydratePublishedState() {
+  const hasLocalDraft = Boolean(localStorage.getItem(STORAGE_KEY));
+  const snapshot = await fetchPublishedState();
+  if (!snapshot) return;
+  if (isAdminPreview || isPublicPage || !hasLocalDraft) {
+    replaceState(snapshot);
+    latestPublishedAt = snapshot.publishedAt || "";
+    saveState();
+  }
+}
+
+async function refreshPublishedState() {
+  if (!isPublicPage) return;
+  if (document.querySelector("#drawer")?.classList.contains("is-open")) return;
+  const snapshot = await fetchPublishedState();
+  if (!snapshot || (snapshot.publishedAt || "") === latestPublishedAt) return;
+
+  const localVisitors = state.visitors || {};
+  const sourceVisitRecorded = state.sourceVisitRecorded;
+  replaceState(snapshot);
+  state.visitors = { ...(state.visitors || {}), ...localVisitors };
+  state.sourceVisitRecorded = sourceVisitRecorded;
+  latestPublishedAt = snapshot.publishedAt || "";
+  saveState();
+  renderAll();
+}
+
+async function postJson(endpoint, payload, options = {}) {
+  if (window.location.protocol === "file:") return null;
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: Boolean(options.keepalive)
+    });
+    if (!response.ok) throw new Error("request failed");
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+function serverSyncPayload(extra = {}) {
+  return {
+    visitorId: visitSession.id,
+    source: state.currentSource,
+    behavior: getVisitorSnapshot(),
+    ...extra
+  };
+}
+
+function syncVisitToServer(recordView = false, keepalive = false) {
+  if (!isPublicPage) return;
+  postJson("/api/visit", serverSyncPayload({ recordView }), { keepalive });
+}
+
+function syncEventToServer(key) {
+  if (!isPublicPage) return;
+  postJson("/api/event", serverSyncPayload({ key }), { keepalive: true });
+}
+
+async function syncLeadSubmissionToServer(submission) {
+  if (!isPublicPage) return null;
+  const result = await postJson("/api/lead", submission);
+  if (!result?.ok) return null;
+  return {
+    ...submission,
+    join: result.join || submission.join,
+    lead: result.lead || submission.lead,
+    shareRef: result.shareRef || submission.shareRef,
+    shareUrl: result.shareUrl || submission.shareUrl,
+    actualJoinCount: result.actualJoinCount,
+    synced: true
+  };
+}
+
+function syncFullStateToServer() {
+  if (window.location.protocol === "file:") return;
+  postJson("/api/state", getPublishSnapshot(), { keepalive: true });
+}
+
+function applySyncedStateSnapshot(snapshot) {
+  if (!snapshot) return;
+  replaceState(snapshot);
+  saveState();
+}
+
+async function publishState() {
+  saveState();
+  const button = document.querySelector("#publishActivity");
+  const originalText = button?.textContent || "保存并发布";
+  if (button) {
+    button.disabled = true;
+    button.textContent = "发布中";
+  }
+  try {
+    const response = await fetch("/api/state", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(getPublishSnapshot())
+    });
+    if (!response.ok) throw new Error("publish failed");
+    showToast("已发布，家长端刷新后生效");
+  } catch {
+    showToast("已保存到本机；手机生效需使用发布服务");
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+  }
+}
+
+function getActualJoinCount() {
+  return state.joins.length;
+}
+
+function getTotalQuota() {
+  const value = Number.parseInt(state.activity.totalQuota || state.activity.quota || "0", 10);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function getRemainingQuota() {
+  return Math.max(0, getTotalQuota() - getActualJoinCount());
+}
+
+function getDeadlineDate() {
+  const date = new Date(state.activity.deadline || "");
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatDeadline(date) {
+  if (!date) return "暂未设置";
+  return `${String(date.getMonth() + 1).padStart(2, "0")}月${String(date.getDate()).padStart(2, "0")}日 ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function renderCountdown() {
+  const deadline = getDeadlineDate();
+  const deadlineText = document.querySelector("#deadlineText");
+  const countdownUnits = document.querySelector("#countdownUnits");
+  if (!deadlineText || !countdownUnits) return;
+
+  deadlineText.textContent = formatDeadline(deadline);
+  if (!deadline) {
+    countdownUnits.innerHTML = `<span>暂未设置截止时间</span>`;
+    return;
+  }
+
+  const diff = deadline.getTime() - Date.now();
+  if (diff <= 0) {
+    countdownUnits.innerHTML = `<span class="countdown-ended">本轮已截止</span>`;
+    return;
+  }
+
+  const totalSeconds = Math.floor(diff / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const label = days > 0 ? `距截止 ${days}天${hours}小时` : `距截止 ${Math.max(1, hours)}小时内`;
+  countdownUnits.innerHTML = `<span>${label}</span>`;
+}
+
+function normalizeFields(fields) {
+  return fields.map((field, index) => ({
+    key: field.key || inferFieldKey(field, index),
+    name: field.name || "自定义问题",
+    type: field.type || "填空",
+    required: Boolean(field.required),
+    options: Array.isArray(field.options) ? field.options : []
+  }));
+}
+
+function mergeMaterials(savedItems, includeDefaults = false) {
+  const merged = [...savedItems];
+  if (includeDefaults) {
+    defaultState.materials.forEach((item) => {
+      const hasSameItem = merged.some((saved) => saved.title === item.title && saved.type === item.type);
+      const hasCoverItem =
+        item.type === "图片" &&
+        merged.some((saved) => saved.type === "图片" && (saved.title === "题册目录预览" || saved.title.includes("封面") || saved.title.includes("目录")));
+      if (!hasSameItem && !hasCoverItem) merged.push(structuredClone(item));
+    });
+  }
+  const cover = merged.find((item) => item.type === "图片" && (item.title === "题册目录预览" || item.title.includes("封面") || item.title.includes("目录")));
+  if (cover && !cover.fileData && (!cover.url || LEGACY_COVER_IMAGES.includes(cover.url))) {
+    cover.title = "高三导数好题封面预览";
+    cover.description = "洛优好题系列导数专题封面，家长可第一眼看到资料质感。";
+    cover.url = DEFAULT_COVER_IMAGE;
+    cover.fileName = "daoshu-preview-cover.png";
+    cover.mimeType = "image/png";
+    cover.visibility = "前台预览";
+  }
+  return merged;
+}
+
+function inferFieldKey(field, index) {
+  if (field.name?.includes("姓名")) return "name";
+  if (field.name?.includes("联系") || field.name?.includes("电话") || field.name?.includes("手机")) return "phone";
+  if (field.name?.includes("分数")) return "scoreRange";
+  if (field.name?.includes("当前问题") || field.name?.includes("最卡") || field.name?.includes("卡点")) return "issue";
+  return `custom_${index}`;
+}
+
+function resetState() {
+  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(VISITOR_KEY);
+  Object.keys(state).forEach((key) => delete state[key]);
+  Object.assign(state, structuredClone(defaultState));
+  visitSession.id = getVisitorId();
+  visitSession.startedAt = Date.now();
+  visitSession.lastSyncedAt = Date.now();
+  visitSession.serverSourceRecorded = null;
+  visitSession.recorded = false;
+}
+
+const eventLabels = {
+  page_view: "页面访问",
+  interest_click: "领取资料",
+  diagnosis_click: "学习诊断",
+  join_click: "进群接龙",
+  trial_click: "预约试听",
+  share_click: "分享点击",
+  detail_click: "资料详情"
+};
+
+const panels = {
+  diagnosis: {
+    title: "学习诊断",
+    type: "diagnosis"
+  },
+  join: {
+    title: "领取导数资料包",
+    type: "join"
+  },
+  trial: {
+    title: "预约试听",
+    type: "trial"
+  },
+  newChannel: {
+    title: "新建渠道链接",
+    type: "newChannel"
+  },
+  allJoins: {
+    title: "全部接龙名单",
+    type: "allJoins"
+  },
+  detail: {
+    title: "资料适合谁",
+    type: "detail"
+  }
+};
+
+function getSharePayload(ref = "page") {
+  const url = new URL(window.location.href);
+  url.searchParams.delete("source");
+  url.searchParams.set("ref", ref);
+  return {
+    title: state.activity.title,
+    text: `我刚领了一份${state.activity.title}，含导数压轴题、恒成立、零点问题和函数构造的题册+讲解视频。需要的同学也可以领。`,
+    url: url.toString()
+  };
+}
+
+function maskName(name) {
+  if (name.length <= 1) return name;
+  return `${name[0]}*`;
+}
+
+function publicName(name) {
+  return state.visibility.maskNames ? maskName(name) : name;
+}
+
+function publicJoinTitle(item) {
+  const gradeSubject = state.visibility.showGradeSubject ? `｜${item.grade}${item.subject}` : "";
+  return `${publicName(item.name)}家长${gradeSubject}`;
+}
+
+function publicJoinMeta(item) {
+  const lead = findLeadByName(item.name);
+  const parts = [item.time];
+  if (state.visibility.showCampus) parts.push(item.source);
+  if (state.visibility.showPhone && lead?.phone) parts.push(lead.phone);
+  return parts.join(" · ");
+}
+
+function renderAvatar(item) {
+  const avatarUrl = item.avatarUrl || getSystemAvatarUrl(`${item.name}-${item.id || item.source || ""}`);
+  if (avatarUrl) return `<span class="avatar avatar-photo"><img src="${avatarUrl}" alt="${maskName(item.name)}家长头像" /></span>`;
+  const label = item.avatar || item.name?.[0] || "家";
+  const color = item.avatarColor || stringToColor(item.name || label);
+  return `<span class="avatar" style="background:${color}">${label}</span>`;
+}
+
+function renderJoinAvatar(item) {
+  return state.visibility.showAvatars ? renderAvatar(item) : "";
+}
+
+function stringToColor(value) {
+  const colors = ["#2f9b57", "#3b82c4", "#d97706", "#9b5bd6", "#0f8f8f", "#dc5f45"];
+  const total = [...value].reduce((sum, char) => sum + char.charCodeAt(0), 0);
+  return colors[total % colors.length];
+}
+
+function stableHash(value) {
+  return [...String(value || "家长")].reduce((sum, char) => (sum * 31 + char.charCodeAt(0)) >>> 0, 7);
+}
+
+function getSystemAvatarUrl(seed) {
+  const hash = stableHash(seed);
+  const base = (hash % SYSTEM_AVATAR_BASE_COUNT) + 1;
+  const variant = hash % SYSTEM_AVATAR_COUNT;
+  return `./assets/system-avatars/avatar-${String(base).padStart(2, "0")}.svg?v=${variant}`;
+}
+
+function readCurrentSource() {
+  const params = new URLSearchParams(window.location.search);
+  const source = params.get("source");
+  const ref = params.get("ref");
+  if (ref) return { kind: "ref", key: ref };
+  if (source) return { kind: "source", key: source };
+  return { kind: "direct", key: "direct" };
+}
+
+function resolveSourceLabel(source) {
+  if (!source || source.key === "direct") return "自然访问";
+  const channel = state.channels.find((item) => item.source === source.key);
+  if (channel) return channel.name;
+  if (source.kind === "ref") return `用户分享 ${source.key}`;
+  return source.key;
+}
+
+function ensureChannelForSource(source) {
+  if (!source || source.key === "direct") return null;
+  let channel = state.channels.find((item) => item.source === source.key);
+  if (channel) return channel;
+  channel = {
+    type: source.kind === "ref" ? "家长分享" : "外部渠道",
+    name: source.kind === "ref" ? `${source.key} 分享` : source.key,
+    source: source.key,
+    views: 0,
+    joins: 0,
+    shares: 0,
+    leads: []
+  };
+  state.channels.unshift(channel);
+  return channel;
+}
+
+function makeUniqueShareRef(baseId) {
+  let ref = `user_${baseId}`;
+  let offset = 1;
+  while (state.channels.some((channel) => channel.source === ref)) {
+    ref = `user_${baseId}_${offset}`;
+    offset += 1;
+  }
+  return ref;
+}
+
+function ensureShareChannelForLead(name, shareRef) {
+  let channel = state.channels.find((item) => item.source === shareRef);
+  if (channel) return channel;
+  channel = {
+    type: "家长分享",
+    name: `${name}分享`,
+    source: shareRef,
+    views: 0,
+    joins: 0,
+    shares: 0,
+    leads: []
+  };
+  state.channels.unshift(channel);
+  return channel;
+}
+
+function getVisitorId() {
+  let visitorId = localStorage.getItem(VISITOR_KEY);
+  if (!visitorId) {
+    visitorId = `visitor_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    localStorage.setItem(VISITOR_KEY, visitorId);
+  }
+  return visitorId;
+}
+
+function ensureVisitorBehavior() {
+  state.visitors ||= {};
+  if (!state.visitors[visitSession.id]) {
+    state.visitors[visitSession.id] = {
+      id: visitSession.id,
+      visits: 0,
+      totalSeconds: 0,
+      currentSeconds: 0,
+      maxSeconds: 0,
+      clicks: 0,
+      lastSource: "自然访问",
+      lastSeen: ""
+    };
+  }
+  return state.visitors[visitSession.id];
+}
+
+function recordVisitSession() {
+  if (visitSession.recorded) return;
+  const behavior = ensureVisitorBehavior();
+  behavior.visits += 1;
+  behavior.lastSource = resolveSourceLabel(state.currentSource);
+  behavior.lastSeen = formatDateTime(new Date());
+  visitSession.recorded = true;
+  saveState();
+}
+
+function syncVisitorBehavior() {
+  const now = Date.now();
+  const elapsed = Math.max(0, Math.round((now - visitSession.lastSyncedAt) / 1000));
+  if (!elapsed) return ensureVisitorBehavior();
+
+  const behavior = ensureVisitorBehavior();
+  behavior.totalSeconds += elapsed;
+  behavior.currentSeconds = Math.round((now - visitSession.startedAt) / 1000);
+  behavior.maxSeconds = Math.max(behavior.maxSeconds, behavior.currentSeconds);
+  behavior.lastSource = resolveSourceLabel(state.currentSource);
+  behavior.lastSeen = formatDateTime(new Date(now));
+  visitSession.lastSyncedAt = now;
+  saveState();
+  return behavior;
+}
+
+function getVisitorSnapshot() {
+  const behavior = syncVisitorBehavior();
+  return {
+    visits: behavior.visits,
+    totalSeconds: behavior.totalSeconds,
+    currentSeconds: behavior.currentSeconds,
+    maxSeconds: behavior.maxSeconds,
+    clicks: behavior.clicks,
+    lastSource: behavior.lastSource,
+    lastSeen: behavior.lastSeen
+  };
+}
+
+function scoreBehaviorIntent(behavior) {
+  if (!behavior) return 0;
+  const stayScore = Math.min(10, Math.floor((behavior.currentSeconds || 0) / 15));
+  const visitScore = Math.min(8, Math.max(0, (behavior.visits || 1) - 1) * 2);
+  const clickScore = Math.min(8, (behavior.clicks || 0) * 2);
+  return stayScore + visitScore + clickScore;
+}
+
+function formatDuration(seconds = 0) {
+  const safeSeconds = Math.max(0, Math.round(seconds));
+  const minutes = Math.floor(safeSeconds / 60);
+  const remainder = safeSeconds % 60;
+  if (minutes <= 0) return `${remainder} 秒`;
+  return `${minutes} 分 ${remainder} 秒`;
+}
+
+function formatDateTime(date) {
+  return `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+function getReferralForLead(lead) {
+  return state.channels.find((channel) => channel.type === "家长分享" && channel.name.startsWith(lead.name));
+}
+
+function getFollowReasons(lead) {
+  const behavior = lead.behavior || {};
+  const referral = getReferralForLead(lead);
+  const reasons = [];
+
+  if (lead.score >= 85) reasons.push(`意向分 ${lead.score}`);
+  if (behavior.visits >= 2) reasons.push(`进入 ${behavior.visits} 次`);
+  if (behavior.currentSeconds >= 60 || behavior.totalSeconds >= 120) reasons.push(`停留 ${formatDuration(Math.max(behavior.currentSeconds || 0, behavior.totalSeconds || 0))}`);
+  if (behavior.clicks >= 2) reasons.push(`点击 ${behavior.clicks} 次`);
+  if (["新领取", "已加微信", "已进群", "有训练营意向"].includes(lead.status)) reasons.push(lead.status);
+  if (referral?.joins > 0) reasons.push(`分享带来 ${referral.joins} 人`);
+  if (lead.issue) reasons.push(lead.issue);
+
+  return reasons.slice(0, 4);
+}
+
+function getNextFollowAction(lead) {
+  if (lead.status === "新领取") return "先加微信，确认资料是否收到";
+  if (lead.status === "已加微信") return "拉进资料群，发送导数小册子";
+  if (lead.status === "已进群") return "观察互动，邀请做学习诊断";
+  if (lead.status === "已发资料") return "追问资料使用感受";
+  if (lead.status === "已互动") return "推荐对应专题训练";
+  if (lead.status === "有训练营意向") return "安排试听或电话沟通";
+  if (lead.status === "已报名") return "维护关系，鼓励分享";
+  return "低优先级，暂缓跟进";
+}
+
+function getFollowPriority(lead) {
+  const behavior = lead.behavior || {};
+  const referral = getReferralForLead(lead);
+  const statusBoost = {
+    "有训练营意向": 18,
+    "已互动": 14,
+    "已进群": 12,
+    "已加微信": 10,
+    "新领取": 8,
+    "已发资料": 8,
+    "已报名": 4,
+    "无效": -50
+  };
+
+  return (
+    lead.score +
+    (statusBoost[lead.status] || 0) +
+    Math.min(12, (behavior.visits || 0) * 3) +
+    Math.min(12, Math.floor((behavior.totalSeconds || behavior.currentSeconds || 0) / 30)) +
+    Math.min(8, (behavior.clicks || 0) * 2) +
+    (referral ? Math.min(10, referral.joins * 2) : 0)
+  );
+}
+
+function getFollowReminderGroups() {
+  const groups = [
+    {
+      key: "new",
+      title: "马上联系",
+      action: "先加微信，确认资料是否收到",
+      statuses: ["新领取"]
+    },
+    {
+      key: "group",
+      title: "拉进资料群",
+      action: "发送进群方式和资料领取口令",
+      statuses: ["已加微信"]
+    },
+    {
+      key: "material",
+      title: "发资料后互动",
+      action: "提醒看题册/视频，追问卡点",
+      statuses: ["已进群", "已发资料", "已互动"]
+    },
+    {
+      key: "trial",
+      title: "转试听/训练营",
+      action: "安排试听或电话沟通",
+      statuses: ["有训练营意向"]
+    }
+  ];
+
+  return groups.map((group) => ({
+    ...group,
+    leads: state.leads
+      .map((lead, index) => ({ lead, index, priority: getFollowPriority(lead) }))
+      .filter(({ lead }) => group.statuses.includes(lead.status))
+      .sort((a, b) => b.priority - a.priority)
+  }));
+}
+
+function getSharerNameFromSource(source) {
+  if (!source || source.kind !== "ref") return null;
+  const channel = state.channels.find((item) => item.source === source.key);
+  if (!channel || channel.type !== "家长分享") return null;
+  return channel.name.replace(/分享$/, "").trim() || null;
+}
+
+function getRecentJoins() {
+  const sharerName = getSharerNameFromSource(state.currentSource);
+  if (!sharerName) return state.joins.slice(0, 4);
+
+  const sharerJoin = state.joins.find((item) => item.name === sharerName);
+  if (!sharerJoin) return state.joins.slice(0, 4);
+
+  return [sharerJoin, ...state.joins.filter((item) => item.name !== sharerName)].slice(0, 4);
+}
+
+function renderSourceNotice() {
+  const notice = document.querySelector("#sourceNotice");
+  if (!notice) return;
+  const label = resolveSourceLabel(state.currentSource);
+  notice.textContent = `当前来源：${label}`;
+}
+
+function renderActivity() {
+  document.querySelectorAll("[data-activity-field]").forEach((node) => {
+    const key = node.dataset.activityField;
+    node.textContent = state.activity[key] || publicActivityCopy[key] || "";
+  });
+  document.querySelector("#audienceList").innerHTML = state.activity.audience
+    .map((item) => `<li>${item}</li>`)
+    .join("");
+  document.querySelectorAll("[data-edit-activity]").forEach((input) => {
+    const key = input.dataset.editActivity;
+    if (document.activeElement !== input) input.value = state.activity[key] || "";
+  });
+}
+
+function renderJoins() {
+  const container = document.querySelector("#recentJoins");
+  const joins = getRecentJoins();
+  const loopJoins = joins.length > 3 ? [...joins, ...joins] : joins;
+  container.innerHTML = loopJoins
+    .map(
+      (item) => `
+        <article class="join-item">
+          ${renderJoinAvatar(item)}
+          <div>
+            <strong>${publicJoinTitle(item)}</strong>
+            <small>${publicJoinMeta(item)}</small>
+          </div>
+          <span class="join-rank">#${item.id}</span>
+        </article>
+      `
+    )
+    .join("");
+  setupJoinAutoScroll();
+}
+
+function setupJoinAutoScroll() {
+  const container = document.querySelector("#recentJoins");
+  if (!container) return;
+  window.clearInterval(joinAutoScrollTimer);
+  window.clearTimeout(joinAutoScrollResumeTimer);
+  joinAutoScrollPaused = false;
+
+  const pause = () => {
+    if (joinAutoScrollInternal) return;
+    joinAutoScrollPaused = true;
+    window.clearTimeout(joinAutoScrollResumeTimer);
+    joinAutoScrollResumeTimer = window.setTimeout(() => {
+      joinAutoScrollPaused = false;
+    }, 3200);
+  };
+
+  if (!container.dataset.autoScrollBound) {
+    container.addEventListener("touchstart", pause, { passive: true });
+    container.addEventListener("mousedown", pause);
+    container.addEventListener("scroll", pause, { passive: true });
+    container.dataset.autoScrollBound = "true";
+  }
+
+  joinAutoScrollTimer = window.setInterval(() => {
+    if (joinAutoScrollPaused || container.scrollHeight <= container.clientHeight) return;
+    joinAutoScrollInternal = true;
+    container.scrollTop += 1;
+    if (container.scrollTop >= container.scrollHeight / 2) container.scrollTop = 0;
+    window.requestAnimationFrame(() => {
+      joinAutoScrollInternal = false;
+    });
+  }, 55);
+}
+
+function renderEvents() {
+  const max = Math.max(...Object.values(state.events));
+  document.querySelector("#eventBars").innerHTML = Object.entries(state.events)
+    .map(([key, value]) => {
+      const width = Math.max(6, Math.round((value / max) * 100));
+      return `
+        <div class="event-row">
+          <span>${eventLabels[key] || key}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${width}%"></div></div>
+          <strong>${value}</strong>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderHotLeads() {
+  const hot = [...state.leads]
+    .map((lead, index) => ({ lead, index, priority: getFollowPriority(lead), reasons: getFollowReasons(lead) }))
+    .filter((item) => item.lead.status !== "无效")
+    .sort((a, b) => b.priority - a.priority)
+    .slice(0, 4);
+  document.querySelector("#hotLeadList").innerHTML = hot
+    .map(
+      ({ lead, index, priority, reasons }) => `
+        <article class="follow-card" data-focus-lead="${index}">
+          <div class="follow-head">
+            <span class="avatar">${lead.name[0]}</span>
+            <div>
+              <strong>${lead.name}</strong>
+              <small>${lead.status} · ${lead.source}</small>
+            </div>
+            <span class="score">${Math.round(priority)}</span>
+          </div>
+          <div class="reason-tags">
+            ${reasons.map((reason) => `<span>${reason}</span>`).join("")}
+          </div>
+          <p>${getNextFollowAction(lead)}</p>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderFollowReminders() {
+  const container = document.querySelector("#followReminderBoard");
+  if (!container) return;
+  container.innerHTML = getFollowReminderGroups()
+    .map(
+      (group) => `
+        <article class="follow-reminder-card">
+          <div class="follow-reminder-head">
+            <div>
+              <strong>${group.title}</strong>
+              <span>${group.action}</span>
+            </div>
+            <b>${group.leads.length}</b>
+          </div>
+          <div class="follow-reminder-leads">
+            ${
+              group.leads.length
+                ? group.leads
+                    .slice(0, 3)
+                    .map(
+                      ({ lead, index, priority }) => `
+                        <button type="button" data-focus-lead="${index}">
+                          <span>${lead.name}</span>
+                          <small>${lead.issue || lead.source}</small>
+                          <em>${Math.round(priority)}</em>
+                        </button>
+                      `
+                    )
+                    .join("")
+                : `<p>暂无待处理客户</p>`
+            }
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderLeadRows() {
+  const entries = getFilteredLeadEntries();
+  if (entries.length && !entries.some(({ index }) => index === state.selectedLead)) state.selectedLead = entries[0].index;
+  document.querySelector("#leadRows").innerHTML = entries.length
+    ? entries
+        .map(
+          (lead) => `
+            <tr data-lead-index="${lead.index}" class="${lead.index === state.selectedLead ? "is-selected" : ""}">
+              <td>${lead.item.name}<br><small>${lead.item.phone}</small></td>
+              <td>${lead.item.grade}</td>
+              <td>${lead.item.subject}</td>
+              <td>${lead.item.source}</td>
+              <td><span class="score">${lead.item.score}</span></td>
+              <td><span class="status">${lead.item.status}</span></td>
+            </tr>
+          `
+        )
+        .join("")
+    : `<tr><td colspan="6" class="empty-table">当前筛选下暂无客户</td></tr>`;
+}
+
+function setLeadFilter(filter) {
+  activeLeadFilter = filter;
+  document.querySelectorAll("[data-lead-filter]").forEach((item) => item.classList.toggle("is-selected", item.dataset.leadFilter === filter));
+  renderLeadRows();
+  renderLeadDetail();
+}
+
+function getFilteredLeadEntries() {
+  return state.leads
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => activeLeadFilter === "全部" || item.status === activeLeadFilter);
+}
+
+function renderLeadDetail() {
+  const lead = state.leads[state.selectedLead];
+  const referral = state.channels.find((channel) => channel.type === "家长分享" && channel.name.startsWith(lead.name));
+  const behavior = lead.behavior || {};
+  document.querySelector("#leadDetail").innerHTML = `
+    <div class="brand-mark">
+      <span>${lead.name[0]}</span>
+      <div>
+        <strong>${lead.name}</strong>
+        <small>${lead.status} · 意向分 ${lead.score}</small>
+      </div>
+    </div>
+    <div class="detail-kv">
+      <div><span>电话</span><strong>${lead.phone}</strong></div>
+      <div><span>年级</span><strong>${lead.grade}</strong></div>
+      <div><span>科目</span><strong>${lead.subject}</strong></div>
+      <div><span>来源</span><strong>${lead.source}</strong></div>
+      <div><span>问题</span><strong>${lead.issue}</strong></div>
+    </div>
+    <div class="behavior-box">
+      <strong>页面行为</strong>
+      <div class="detail-kv">
+        <div><span>进入次数</span><strong>${behavior.visits || "未记录"}</strong></div>
+        <div><span>本次停留</span><strong>${behavior.currentSeconds ? formatDuration(behavior.currentSeconds) : "未记录"}</strong></div>
+        <div><span>累计停留</span><strong>${behavior.totalSeconds ? formatDuration(behavior.totalSeconds) : "未记录"}</strong></div>
+        <div><span>页面点击</span><strong>${behavior.clicks || 0}</strong></div>
+        <div><span>最后访问</span><strong>${behavior.lastSeen || "未记录"}</strong></div>
+      </div>
+    </div>
+    <div class="behavior-box">
+      <strong>填写信息</strong>
+      <div class="detail-kv">
+        ${renderLeadAnswers(lead)}
+      </div>
+    </div>
+    <div class="share-contribution">
+      <strong>分享贡献</strong>
+      ${
+        referral
+          ? `
+            <div class="detail-kv">
+              <div><span>分享链接</span><strong>?ref=${referral.source}</strong></div>
+              <div><span>带来访问</span><strong>${referral.views}</strong></div>
+              <div><span>带来领取</span><strong>${referral.joins}</strong></div>
+            </div>
+            <div class="referred-leads compact">
+              ${renderReferredLeadDetails(referral.leads)}
+            </div>
+          `
+          : `<p>暂无分享带来的客户。</p>`
+      }
+    </div>
+    <div class="follow-box">
+      <label>
+        跟进状态
+        <select id="leadStatusSelect">
+          ${state.followStatuses
+            .map((status) => `<option value="${status}" ${status === lead.status ? "selected" : ""}>${status}</option>`)
+            .join("")}
+        </select>
+      </label>
+      <label>
+        跟进备注
+        <textarea id="leadNoteInput" rows="4" placeholder="记录老师沟通情况">${lead.note || ""}</textarea>
+      </label>
+      <button class="primary-button" id="saveLeadFollow">保存跟进</button>
+      <small id="followSavedHint"></small>
+    </div>
+    <div class="timeline">
+      ${lead.actions.map((action) => `<p>${action}</p>`).join("")}
+    </div>
+  `;
+}
+
+function renderLeadAnswers(lead) {
+  if (!lead.answers) return `<div><span>暂无自定义字段</span><strong>未记录</strong></div>`;
+  return state.fields
+    .map((field) => `<div><span>${field.name}</span><strong>${lead.answers[field.key] || lead.answers[field.name] || "未填写"}</strong></div>`)
+    .join("");
+}
+
+function renderChannels() {
+  const totals = state.channels.reduce(
+    (sum, channel) => {
+      sum.views += channel.views;
+      sum.joins += channel.joins;
+      sum.shares += channel.shares;
+      return sum;
+    },
+    { views: 0, joins: 0, shares: 0 }
+  );
+  const totalRate = totals.views ? `${((totals.joins / totals.views) * 100).toFixed(1)}%` : "0%";
+  document.querySelector("#channelList").innerHTML = state.channels
+    .map((channel) => {
+      const rate = channel.views ? `${((channel.joins / channel.views) * 100).toFixed(1)}%` : "0%";
+      return `
+        <article class="channel-row">
+          <div>
+            <div class="channel-title">
+              <strong>${channel.name}</strong>
+              <span>${channel.type}</span>
+            </div>
+            <code>https://quiz.xdianping.cn/zhaosheng?source=${channel.source}</code>
+            <div class="source-leads">
+              ${channel.leads.map((lead) => `<span>${lead}</span>`).join("")}
+            </div>
+          </div>
+          <div class="mini-metrics">
+            <span>${channel.views} 访问</span>
+            <span>${channel.joins} 报名</span>
+            <span>${channel.shares} 分享</span>
+            <span>${rate}</span>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+
+  document.querySelector("#channelSummary").innerHTML = `
+    <article><span>总访问</span><strong>${totals.views}</strong></article>
+    <article><span>资料领取</span><strong>${totals.joins}</strong></article>
+    <article><span>分享次数</span><strong>${totals.shares}</strong></article>
+    <article><span>转化率</span><strong>${totalRate}</strong></article>
+  `;
+}
+
+function getMaterialIcon(type) {
+  return {
+    文字: "文",
+    图片: "图",
+    视频: "视",
+    语音: "音",
+    PDF: "PDF"
+  }[type] || "材";
+}
+
+function getMaterialAccept(type) {
+  return {
+    文字: ".txt,.md,text/plain",
+    图片: "image/*",
+    视频: "video/*",
+    语音: "audio/*,.mp3,.m4a,.wav,.aac,.ogg",
+    PDF: ".pdf,application/pdf"
+  }[type] || "*/*";
+}
+
+function getMaterialUploadHint(type) {
+  return {
+    文字: "可上传 txt/md，也可以直接在“文字正文”里填写。",
+    图片: "从相册选择图片，或上传图片文件。",
+    视频: "从相册选择视频，或上传视频文件。",
+    语音: "选择手机文件里的 mp3/m4a/wav 等音频；微信聊天语音通常需先另存为文件。",
+    PDF: "选择手机文件里的 PDF；微信聊天里的 PDF 通常需先保存到文件。"
+  }[type] || "选择对应素材文件。";
+}
+
+function getAlbumAccept(type) {
+  if (type === "视频") return "video/*";
+  return "image/*,video/*";
+}
+
+function getMaterialSource(item) {
+  return item.fileData || item.url || "";
+}
+
+function getPreviewMaterials() {
+  const priority = { 图片: 1, 视频: 2, PDF: 3, 文字: 4, 语音: 5 };
+  return state.materials
+    .filter((item) => item.visibility !== "领取后展示")
+    .sort((a, b) => (priority[a.type] || 9) - (priority[b.type] || 9))
+    .slice(0, 5);
+}
+
+function renderMaterialMedia(item, compact = false) {
+  const source = getMaterialSource(item);
+  if (item.type === "文字") {
+    const text = item.body || item.description || "后台可直接填写文字内容。";
+    return `<p class="material-body">${compact ? text.slice(0, 46) : text}</p>`;
+  }
+  if (!source) return item.teaserText ? `<em>${item.teaserText}</em>` : "";
+  if (item.type === "图片") return `<img class="material-thumb" src="${source}" alt="${item.title}" />`;
+  if (item.type === "视频") return `<video class="material-player" src="${source}" controls playsinline></video>`;
+  if (item.type === "语音") return `<audio class="material-audio" src="${source}" controls></audio>`;
+  if (item.type === "PDF") return `<a href="${source}" target="_blank" rel="noreferrer">打开 PDF${item.fileName ? `：${item.fileName}` : ""}</a>`;
+  return `<a href="${source}" target="_blank" rel="noreferrer">打开素材</a>`;
+}
+
+function isDefaultBookCover(item) {
+  return item.type === "图片" && (item.url === DEFAULT_COVER_IMAGE || item.title.includes("封面") || item.title.includes("导数好题"));
+}
+
+function renderBookSampleCard() {
+  return `
+    <div class="book-sample-card" aria-label="高三数学导数精讲手本封面">
+      <div class="book-spine">
+        <span class="spine-edition">第<b>7</b>届</span>
+        <i class="book-spine-divider"></i>
+        <strong>高三靶向刷题集训营</strong>
+        <em class="spine-subtitle">多分集训</em>
+      </div>
+      <div class="book-face">
+        <div class="book-gutter"></div>
+        <div class="book-page-edge"></div>
+        <div class="book-topline">
+          <div class="book-brand">
+            <span>洛优高考</span>
+            <small>LUO YOU GAOKAO</small>
+          </div>
+          <em>2027届专版 · 第一册</em>
+        </div>
+        <div class="book-copy">
+          <span class="book-kicker">高三数学资料</span>
+          <h3>
+            <span>高三导数</span>
+            <em>精讲手本</em>
+          </h3>
+        </div>
+        <div class="book-badge">
+          <strong>50</strong>
+          <span>道</span>
+          <em>精选好题</em>
+        </div>
+        <div class="book-source">源自往届集训营真实题库</div>
+        <div class="book-swoosh"></div>
+        <div class="math-notes">
+          <span>f'(x)=0 → 极值点</span>
+          <span>f'(x)&gt;0 → 单调递增</span>
+        </div>
+        <div class="sample-tags">
+          <span>精选好题</span>
+          <span>方法拆解</span>
+          <span>往届答题卡</span>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderMaterialsPreview() {
+  const container = document.querySelector("#contentPreviewList");
+  if (!container) return;
+  const visibleItems = getPreviewMaterials();
+  container.innerHTML = visibleItems
+    .map((item, index) => {
+      const media = renderMaterialMedia(item, true);
+      const isMediaCard = ["图片", "视频"].includes(item.type) && getMaterialSource(item);
+      return `
+        <article class="content-preview-card ${index === 0 ? "is-featured" : ""} ${isMediaCard ? "is-media-card" : ""}">
+          ${isMediaCard ? media : ""}
+          <div class="content-preview-copy">
+            <strong>${item.title}</strong>
+            <small>${item.description}</small>
+            ${isMediaCard ? "" : media}
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderUnlockedMaterials() {
+  const items = state.materials.filter((item) => item.visibility !== "隐藏");
+  if (!items.length) return "";
+  return `
+    <div class="share-guide">
+      <strong>资料内容入口</strong>
+      <div class="unlocked-materials">
+        ${items
+          .map(
+            (item) => `
+              <article>
+                <span class="material-icon">${getMaterialIcon(item.type)}</span>
+                <div>
+                  <strong>${item.title}</strong>
+                  <small>${item.description}</small>
+                  ${renderMaterialMedia(item)}
+                </div>
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderSuccessPanel({ name, actualJoinCount, shareRef, shareText }) {
+  return `
+    <div class="success-page">
+      <section class="success-hero">
+        <span class="success-check">✓</span>
+        <div>
+          <h3>资料领取成功</h3>
+          <p>${maskName(name)}同学已成为第 ${actualJoinCount} 位领取用户，资料入口和进群方式已生成。</p>
+        </div>
+      </section>
+
+      <section class="success-section">
+        <div class="section-title">
+          <h3>第一步：加老师领取完整资料</h3>
+          <span>最关键</span>
+        </div>
+        <div class="teacher-card">
+          <div class="avatar">师</div>
+          <div>
+            <strong>资料领取老师</strong>
+            <small>负责发资料、拉群和答疑安排</small>
+          </div>
+        </div>
+        <div class="wechat-copy-card">
+          <div>
+            <span>老师微信</span>
+            <strong id="teacherWechat">${state.activity.teacherWechat}</strong>
+            <small>添加后发送口令：${state.activity.passphrase}</small>
+          </div>
+          <button type="button" data-copy-wechat>复制</button>
+        </div>
+      </section>
+
+      <section class="success-section">
+        <div class="section-title">
+          <h3>第二步：查看资料内容</h3>
+          <span>预览</span>
+        </div>
+        ${renderUnlockedMaterials()}
+      </section>
+
+      <section class="success-section">
+        <div class="section-title">
+          <h3>第三步：顺手转给同学或家长</h3>
+          <span>可选</span>
+        </div>
+        <p class="share-note">${state.activity.shareLead}</p>
+        <textarea id="shareText" readonly rows="4">${shareText}</textarea>
+        <button type="button" class="primary-button full-button" data-share-success="${shareRef}">分享给同学/家长</button>
+      </section>
+    </div>
+  `;
+}
+
+function renderMaterials() {
+  document.querySelector("#materialList").innerHTML = state.materials
+    .map(
+      (item, index) => `
+        <article class="material-row">
+          <div class="material-edit-grid">
+            <label>
+              类型
+              <select data-edit-material="${index}" data-material-prop="type">
+                ${["文字", "图片", "视频", "语音", "PDF"]
+                  .map((type) => `<option ${item.type === type ? "selected" : ""}>${type}</option>`)
+                  .join("")}
+              </select>
+            </label>
+            <label>
+              标题
+              <input data-edit-material="${index}" data-material-prop="title" value="${item.title}" />
+            </label>
+            <label>
+              展示位置
+              <select data-edit-material="${index}" data-material-prop="visibility">
+                <option ${item.visibility === "前台预览" ? "selected" : ""}>前台预览</option>
+                <option ${item.visibility === "领取后展示" ? "selected" : ""}>领取后展示</option>
+                <option ${item.visibility === "隐藏" ? "selected" : ""}>隐藏</option>
+              </select>
+            </label>
+            <label class="wide">
+              简介
+              <textarea data-edit-material="${index}" data-material-prop="description" rows="2">${item.description}</textarea>
+            </label>
+            <label class="wide">
+              文字正文
+              <textarea data-edit-material="${index}" data-material-prop="body" rows="3" placeholder="文字类型可以直接写正文；其他类型可写补充说明。">${item.body || ""}</textarea>
+            </label>
+            <label class="wide">
+              素材链接
+              <input data-edit-material="${index}" data-material-prop="url" value="${item.url}" placeholder="也可以粘贴图片 / 视频 / 语音 / PDF 的 URL" />
+              <small>如果微信 H5 无法直接选 PDF 或语音，可以先把文件上传到网盘/OSS，再粘贴链接。</small>
+            </label>
+            <label class="wide">
+              预览提示语
+              <input data-edit-material="${index}" data-material-prop="teaserText" value="${item.teaserText || ""}" placeholder="可选。为空则前台不显示，例如：完整内容领取后开放" />
+              <small>没有上传文件时才会显示；不想显示任何提示就留空。</small>
+            </label>
+            <div class="wide upload-choice-grid">
+              <label>
+                从相册选择图片/视频
+                <input type="file" data-upload-material="${index}" data-upload-source="album" accept="${getAlbumAccept(item.type)}" />
+              </label>
+              <label>
+                从文件选择${item.type}
+                <input type="file" data-upload-material="${index}" data-upload-source="file" accept="${getMaterialAccept(item.type)}" />
+              </label>
+            </div>
+            <div class="wide upload-status">
+              <span>${item.fileName ? `已上传：${item.fileName}` : `相册适合图片/视频；文件入口适合 PDF/语音。${getMaterialUploadHint(item.type)}`}</span>
+              ${item.fileName ? `<button type="button" data-clear-material-file="${index}">清除文件</button>` : ""}
+            </div>
+            <div class="wide material-admin-preview">
+              ${renderMaterialMedia(item)}
+            </div>
+          </div>
+          <div class="material-actions">
+            <button class="primary-button" data-finish-material="${index}">完成</button>
+            <button class="secondary-button" data-remove-material="${index}">删除</button>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function updateMaterialFromControl(input) {
+  const material = state.materials[Number(input.dataset.editMaterial)];
+  if (!material) return;
+  material[input.dataset.materialProp] = input.value;
+  saveState();
+  if (input.dataset.materialProp === "type") renderMaterials();
+  renderMaterialsPreview();
+}
+
+function uploadMaterialFile(input) {
+  const material = state.materials[Number(input.dataset.uploadMaterial)];
+  const file = input.files?.[0];
+  if (!material || !file) return;
+  const maxSize = 5 * 1024 * 1024;
+  if (file.size > maxSize) {
+    showToast("原型阶段请先上传 5MB 以内文件");
+    input.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    material.fileName = file.name;
+    material.mimeType = file.type;
+    material.fileData = String(reader.result || "");
+    if (file.type.startsWith("image/")) material.type = "图片";
+    if (file.type.startsWith("video/")) material.type = "视频";
+    if (file.type.startsWith("audio/")) material.type = "语音";
+    if (file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf")) material.type = "PDF";
+    saveState();
+    renderMaterials();
+    renderMaterialsPreview();
+    publishState();
+    showToast("文件已加入资料内容");
+  };
+  reader.readAsDataURL(file);
+}
+
+function getReferralChannels() {
+  return state.channels.filter((channel) => channel.type === "家长分享" || channel.source.startsWith("user_"));
+}
+
+function findLeadByName(name) {
+  return state.leads.find((lead) => lead.name === name);
+}
+
+function renderReferredLeadDetails(names) {
+  if (!names.length) return `<p class="empty-note">暂无领取客户</p>`;
+  return names
+    .map((name) => {
+      const lead = findLeadByName(name);
+      if (!lead) {
+        return `
+          <article class="referred-lead-card">
+            <strong>${name}</strong>
+            <span>暂未补充联系方式</span>
+          </article>
+        `;
+      }
+      return `
+        <article class="referred-lead-card">
+          <div>
+            <strong>${lead.name}</strong>
+            <span>${lead.phone}</span>
+          </div>
+          <div>
+            <small>${lead.status}</small>
+            <small>${lead.issue}</small>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderReferrals() {
+  const referrals = getReferralChannels();
+  const totals = referrals.reduce(
+    (sum, channel) => {
+      sum.views += channel.views;
+      sum.joins += channel.joins;
+      sum.shares += channel.shares;
+      sum.leads += channel.leads.length;
+      return sum;
+    },
+    { views: 0, joins: 0, shares: 0, leads: 0 }
+  );
+
+  document.querySelector("#referralSummary").innerHTML = `
+    <article><span>分享人数</span><strong>${referrals.length}</strong></article>
+    <article><span>带来访问</span><strong>${totals.views}</strong></article>
+    <article><span>带来领取</span><strong>${totals.joins}</strong></article>
+    <article><span>具体客户</span><strong>${totals.leads}</strong></article>
+  `;
+
+  document.querySelector("#referralList").innerHTML = referrals
+    .map((channel) => {
+      const sharer = channel.name.replace(/分享$/, "");
+      return `
+        <article class="referral-row">
+          <div>
+            <div class="channel-title">
+              <strong>${sharer}</strong>
+              <span>${channel.source}</span>
+            </div>
+            <code>https://quiz.xdianping.cn/zhaosheng?ref=${channel.source}</code>
+            <div class="referred-leads">
+              ${renderReferredLeadDetails(channel.leads)}
+            </div>
+          </div>
+          <div class="mini-metrics">
+            <span>${channel.shares} 分享</span>
+            <span>${channel.views} 访问</span>
+            <span>${channel.joins} 领取</span>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderFields() {
+  document.querySelector("#formBuilder").innerHTML = state.fields
+    .map(
+      (field, index) => `
+        <article class="field-row">
+          <div>
+            <div class="field-edit-grid">
+              <label>
+                字段名称
+                <input data-edit-field="${index}" data-field-prop="name" value="${field.name}" />
+              </label>
+              <label>
+                字段类型
+                <select data-edit-field="${index}" data-field-prop="type">
+                  <option ${field.type === "填空" ? "selected" : ""}>填空</option>
+                  <option ${field.type === "单选" ? "selected" : ""}>单选</option>
+                  <option ${field.type === "多选" ? "selected" : ""}>多选</option>
+                </select>
+              </label>
+              <label>
+                是否必填
+                <select data-edit-field="${index}" data-field-prop="required">
+                  <option value="true" ${field.required ? "selected" : ""}>必填</option>
+                  <option value="false" ${!field.required ? "selected" : ""}>选填</option>
+                </select>
+              </label>
+              <label class="wide">
+                选项，用逗号分隔
+                <input data-edit-field="${index}" data-field-prop="options" value="${field.options.join("，")}" placeholder="如：90 分以下，90-110 分" />
+              </label>
+            </div>
+          </div>
+          <button class="secondary-button" data-remove-field="${index}">删除</button>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function updateFieldFromControl(input) {
+  const field = state.fields[Number(input.dataset.editField)];
+  if (!field) return;
+  const prop = input.dataset.fieldProp;
+  if (prop === "required") {
+    field.required = input.value === "true";
+  } else if (prop === "options") {
+    field.options = input.value
+      .split(/[，,]/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+  } else {
+    field[prop] = input.value;
+  }
+  if (prop === "name") field.key = inferFieldKey(field, Number(input.dataset.editField));
+  saveState();
+}
+
+function renderMetrics() {
+  const actualJoins = getActualJoinCount();
+  document.querySelector("#viewCount").textContent = state.events.page_view;
+  document.querySelector("#joinCount").textContent = actualJoins;
+  document.querySelector("#remainingQuota").textContent = getRemainingQuota();
+  const noticeLeft = document.querySelector('[data-activity-field="noticeLeft"]');
+  if (noticeLeft) noticeLeft.textContent = `${actualJoins} 位高三学生/家长已领取`;
+  document.querySelector("#metricViews").textContent = state.events.page_view;
+  document.querySelector("#metricJoins").textContent = actualJoins;
+  document.querySelector("#metricDiagnosis").textContent = state.events.diagnosis_click;
+  document.querySelector("#metricTrials").textContent = state.events.trial_click;
+  renderCountdown();
+}
+
+function track(key) {
+  state.events[key] = (state.events[key] || 0) + 1;
+  const behavior = syncVisitorBehavior();
+  behavior.clicks += 1;
+  saveState();
+  renderEvents();
+  renderMetrics();
+  syncEventToServer(key);
+}
+
+function showToast(message) {
+  const toast = document.querySelector("#toast") || document.createElement("div");
+  toast.id = "toast";
+  toast.className = "toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("is-visible"));
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(() => toast.classList.remove("is-visible"), 2200);
+}
+
+function csvCell(value) {
+  const text = String(value ?? "");
+  return `"${text.replace(/"/g, '""')}"`;
+}
+
+function downloadCsv(filename, rows) {
+  const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+  const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+function exportLeadData() {
+  const rows = [
+    ["姓名", "手机号", "年级", "科目", "来源", "意向分", "跟进状态", "学习问题", "进入次数", "累计停留秒", "点击次数", "最后访问", "备注"],
+    ...state.leads.map((lead) => {
+      const behavior = lead.behavior || {};
+      return [
+        lead.name,
+        lead.phone,
+        lead.grade,
+        lead.subject,
+        lead.source,
+        lead.score,
+        lead.status,
+        lead.issue,
+        behavior.visits || "",
+        behavior.totalSeconds || "",
+        behavior.clicks || 0,
+        behavior.lastSeen || "",
+        lead.note || ""
+      ];
+    })
+  ];
+  downloadCsv("客户数据.csv", rows);
+  showToast("客户数据已导出");
+}
+
+function exportReferralData() {
+  const rows = [["分享人", "分享标识", "带来访问", "带来领取", "分享次数", "被带来客户", "手机号", "跟进状态", "学习问题"]];
+  getReferralChannels().forEach((channel) => {
+    const sharer = channel.name.replace(/分享$/, "");
+    if (!channel.leads.length) {
+      rows.push([sharer, channel.source, channel.views, channel.joins, channel.shares, "", "", "", ""]);
+      return;
+    }
+    channel.leads.forEach((name) => {
+      const lead = findLeadByName(name) || {};
+      rows.push([sharer, channel.source, channel.views, channel.joins, channel.shares, name, lead.phone || "", lead.status || "", lead.issue || ""]);
+    });
+  });
+  downloadCsv("分享关系.csv", rows);
+  showToast("分享关系已导出");
+}
+
+function renderVisibilityControls() {
+  document.querySelectorAll("[data-visibility-setting]").forEach((input) => {
+    const key = input.dataset.visibilitySetting;
+    input.checked = Boolean(state.visibility[key]);
+  });
+}
+
+function applyVisibilitySettings() {
+  const root = document.documentElement;
+  root.classList.toggle("hide-stats", !state.visibility.showStats);
+  root.classList.toggle("hide-recent-joins", !state.visibility.showRecentJoins);
+  root.classList.toggle("hide-avatars", !state.visibility.showAvatars);
+  root.classList.toggle("hide-full-list", !state.visibility.showFullList);
+}
+
+async function shareActivity(ref = "page", customText = "") {
+  const payload = getSharePayload(ref);
+  const shareText = customText || `${payload.text}\n${payload.url}`;
+  track("share_click");
+
+  if (navigator.share) {
+    try {
+      await navigator.share(payload);
+      showToast("已打开分享面板");
+      return;
+    } catch (error) {
+      if (error.name === "AbortError") return;
+    }
+  }
+
+  try {
+    await navigator.clipboard.writeText(shareText);
+    showToast("分享文案已复制，直接发给同学或家长");
+  } catch {
+    showToast("请长按复制分享文案");
+  }
+}
+
+function sharePrompt(ref) {
+  const payload = getSharePayload(ref);
+  return `我刚领了一份${state.activity.title}。\n\n${state.activity.shareLead}\n\n领取入口：\n${payload.url}`;
+}
+
+function renderLeadFormFields() {
+  return state.fields
+    .map((field, index) => {
+      const fieldName = `field_${index}`;
+      const required = field.required ? "required" : "";
+      if (field.type === "填空" || !field.options.length) {
+        return `
+          <label>
+            ${field.name}
+            <input name="${fieldName}" data-field-key="${field.key}" placeholder="${field.required ? "请填写" : "可选填"}" ${required} />
+          </label>
+        `;
+      }
+
+      return `
+        <label>
+          ${field.name}
+          <div class="choice-row" data-choice-group="${fieldName}" data-field-key="${field.key}" data-required="${field.required}" data-multiple="${field.type === "多选"}">
+            ${field.options
+              .map((option, optionIndex) => `<button type="button" class="${optionIndex === 0 ? "is-picked" : ""}">${option}</button>`)
+              .join("")}
+          </div>
+        </label>
+      `;
+    })
+    .join("");
+}
+
+function readConfiguredAnswers(form) {
+  const answers = {};
+  state.fields.forEach((field, index) => {
+    const fieldName = `field_${index}`;
+    const choiceGroup = form.querySelector(`[data-choice-group="${fieldName}"]`);
+    if (choiceGroup) {
+      const picked = [...choiceGroup.querySelectorAll(".is-picked")].map((button) => button.textContent.trim());
+      answers[field.key] = picked.join("、");
+      answers[field.name] = answers[field.key];
+      return;
+    }
+
+    const input = form.querySelector(`[name="${fieldName}"]`);
+    answers[field.key] = input?.value?.trim() || "";
+    answers[field.name] = answers[field.key];
+  });
+  return answers;
+}
+
+function createLeadSubmission(type, answers) {
+  const fallbackId = getActualJoinCount() ? Math.max(...state.joins.map((item) => Number(item.id) || 0)) + 1 : 1;
+  const name = String(answers.name || answers["学生姓名"] || answers["学生姓名或昵称"] || "新同学").trim();
+  const grade = "高三";
+  const subject = "数学";
+  const phone = String(answers.phone || answers["联系方式"] || "").trim();
+  const scoreRange = String(answers.scoreRange || answers["最近数学分数区间"] || "未填写");
+  const issue = String(answers.issue || answers["当前问题"] || answers["导数最卡在哪里"] || "未填写");
+  const source = resolveSourceLabel(state.currentSource);
+  const shareRef = makeUniqueShareRef(fallbackId);
+  const shareUrl = getSharePayload(shareRef).url;
+  const behavior = getVisitorSnapshot();
+  const baseScore = type === "trial" ? 88 : type === "diagnosis" ? 76 : 82;
+  const intentScore = Math.min(99, baseScore + scoreBehaviorIntent(behavior));
+  const eventKeys = ["join_click"];
+  if (type === "trial") eventKeys.push("trial_click");
+  if (type === "diagnosis") eventKeys.push("diagnosis_click");
+
+  return {
+    submissionId: `lead_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    type,
+    source: state.currentSource,
+    visitorId: visitSession.id,
+    behavior,
+    shareRef,
+    shareUrl,
+    eventKeys,
+    join: {
+      id: fallbackId,
+      name,
+      grade,
+      subject,
+      source,
+      time: "刚刚",
+      avatar: name[0] || "新",
+      avatarColor: stringToColor(name),
+      avatarUrl: getSystemAvatarUrl(`${name}-${phone || fallbackId}`)
+    },
+    lead: {
+      name,
+      phone,
+      grade,
+      subject,
+      source,
+      score: intentScore,
+      status: type === "trial" ? "有训练营意向" : type === "diagnosis" ? "已互动" : "新领取",
+      issue,
+      note: "新提交，等待添加老师微信。",
+      behavior,
+      answers,
+      actions: [
+        "刚刚提交资料领取",
+        `分数区间：${scoreRange}`,
+        `进入 ${behavior.visits} 次，停留 ${formatDuration(behavior.currentSeconds)}`,
+        `专属分享链接：${shareUrl}`,
+        type === "trial" ? "预约试听" : type === "diagnosis" ? "完成诊断" : "等待进群领取资料"
+      ]
+    }
+  };
+}
+
+function applyLeadSubmission(submission) {
+  const id = submission.submissionId;
+  if (id && state.leads.some((lead) => lead.submissionId === id)) return getActualJoinCount();
+
+  const join = structuredClone(submission.join);
+  const lead = structuredClone(submission.lead);
+  join.submissionId = id;
+  lead.submissionId = id;
+  lead.shareRef = submission.shareRef;
+
+  state.joins.unshift(join);
+  state.leads.unshift(lead);
+
+  const channel = ensureChannelForSource(submission.source);
+  if (channel) {
+    channel.joins += 1;
+    if (!channel.leads.includes(lead.name)) channel.leads.unshift(lead.name);
+  }
+  ensureShareChannelForLead(lead.name, submission.shareRef);
+
+  (submission.eventKeys || ["join_click"]).forEach((key) => {
+    state.events[key] = (state.events[key] || 0) + 1;
+  });
+  state.selectedLead = 0;
+  saveState();
+  return getActualJoinCount();
+}
+
+function bindSuccessPanelButtons() {
+  document.querySelector("#drawerBody").querySelectorAll("[data-close-drawer]").forEach((button) => {
+    button.addEventListener("click", closeDrawer);
+  });
+  document.querySelector("#drawerBody").querySelectorAll("[data-open-panel]").forEach((button) => {
+    button.addEventListener("click", () => openDrawer(button.dataset.openPanel));
+  });
+  document.querySelector("#drawerBody").querySelector("[data-copy-wechat]")?.addEventListener("click", async (event) => {
+    const value = document.querySelector("#teacherWechat").textContent;
+    try {
+      await navigator.clipboard.writeText(value);
+      event.currentTarget.textContent = "已复制";
+    } catch {
+      event.currentTarget.textContent = value;
+    }
+  });
+  document.querySelector("#drawerBody").querySelector("[data-share-success]")?.addEventListener("click", async (event) => {
+    const value = document.querySelector("#shareText").value;
+    await shareActivity(event.currentTarget.dataset.shareSuccess, value);
+    event.currentTarget.textContent = "已生成分享";
+  });
+}
+
+function openDrawer(panelKey) {
+  const panel = panels[panelKey];
+  if (!panel) return;
+  document.querySelector("#drawerTitle").textContent = panel.title;
+  document.querySelector("#drawerBody").innerHTML = drawerContent(panel.type);
+  document.querySelector("#drawer").classList.add("is-open");
+  document.querySelector("#drawer").setAttribute("aria-hidden", "false");
+  bindDrawerButtons(panel.type);
+}
+
+function closeDrawer() {
+  document.querySelector("#drawer").classList.remove("is-open");
+  document.querySelector("#drawer").setAttribute("aria-hidden", "true");
+}
+
+function drawerContent(type) {
+  if (type === "newChannel") {
+    return `
+      <form class="form-stack" id="channelForm">
+        <label>
+          来源名称
+          <input name="name" placeholder="如：王老师朋友圈 / 高三家长群1" required />
+        </label>
+        <label>
+          来源类型
+          <select name="type">
+            <option>老师渠道</option>
+            <option>社群渠道</option>
+            <option>短视频渠道</option>
+            <option>图文渠道</option>
+            <option>家长分享</option>
+          </select>
+        </label>
+        <label>
+          来源标识
+          <input name="source" placeholder="可不填，系统自动生成" />
+        </label>
+        <div class="submit-row">
+          <button type="submit">生成链接</button>
+          <button type="button" data-close-drawer>取消</button>
+        </div>
+      </form>
+    `;
+  }
+
+  if (type === "allJoins") {
+    return `
+      <div class="all-list">
+        ${state.joins
+          .map(
+            (item) => `
+              <article class="join-item">
+                ${renderJoinAvatar(item)}
+                <div>
+                  <strong>${item.id}. ${publicJoinTitle(item)}</strong>
+                  <small>${state.visibility.maskNames ? "信息已脱敏" : publicJoinMeta(item)}</small>
+                </div>
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+    `;
+  }
+
+  if (type === "detail") {
+    return `
+      <div class="resource-preview">
+        <strong>${state.activity.contentTitle}</strong>
+        ${state.activity.audience.map((item) => `<span>${item}</span>`).join("")}
+      </div>
+      <div class="success-box">
+        <h3>领取后能拿到什么</h3>
+        <p>导数专题小册子、精选题目预览、配套讲解视频，以及群内刷题安排。</p>
+      </div>
+      <div class="submit-row">
+        <button type="button" data-open-panel="join">${state.activity.ctaText}</button>
+        <button type="button" data-close-drawer>先看看</button>
+      </div>
+    `;
+  }
+
+  const submitLabel = type === "diagnosis" ? "生成初步建议" : type === "trial" ? "提交预约" : "提交并领取资料";
+  return `
+    <form class="form-stack" id="leadForm">
+      <div class="resource-preview">
+        <strong>你将领取</strong>
+        <span>导数专题小册子</span>
+        <span>恒成立与零点问题讲解视频</span>
+        <span>群内刷题安排</span>
+      </div>
+      ${renderLeadFormFields()}
+      <div class="submit-row">
+        <button type="submit">${submitLabel}</button>
+        <button type="button" data-close-drawer>稍后再说</button>
+      </div>
+    </form>
+  `;
+}
+
+function bindDrawerButtons(type) {
+  const channelForm = document.querySelector("#channelForm");
+  if (channelForm) {
+    channelForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const data = new FormData(channelForm);
+      const name = String(data.get("name") || "").trim();
+      const type = String(data.get("type") || "老师渠道");
+      const rawSource = String(data.get("source") || "").trim();
+      const source = rawSource || makeSourceKey(name, state.channels.length + 1);
+      state.channels.unshift({ type, name, source, views: 0, joins: 0, shares: 0, leads: [] });
+      saveState();
+      renderChannels();
+      document.querySelector("#drawerBody").innerHTML = `
+        <div class="success-box">
+          <h3>渠道链接已生成</h3>
+          <p>${name} 已加入传播统计。</p>
+          <div class="group-guide">
+            <strong>渠道链接</strong>
+            <span class="link-text">https://quiz.xdianping.cn/zhaosheng?source=${source}</span>
+            <small>把这个链接发给对应老师、群或平台，后台会按来源统计。</small>
+          </div>
+        </div>
+        <div class="submit-row">
+          <button type="button" data-copy-channel="https://quiz.xdianping.cn/zhaosheng?source=${source}">复制链接</button>
+          <button type="button" data-close-drawer>完成</button>
+        </div>
+      `;
+      bindGeneratedChannelButtons();
+    });
+    return;
+  }
+
+  document.querySelectorAll("[data-choice-group] button").forEach((button) => {
+    button.addEventListener("click", () => {
+      const group = button.parentElement;
+      if (group.dataset.multiple === "true") {
+        button.classList.toggle("is-picked");
+        return;
+      }
+      group.querySelectorAll("button").forEach((item) => item.classList.remove("is-picked"));
+      button.classList.add("is-picked");
+    });
+  });
+
+  const form = document.querySelector("#leadForm");
+  if (!form) return;
+
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = "提交中";
+    }
+    const answers = readConfiguredAnswers(form);
+    const localSubmission = createLeadSubmission(type, answers);
+    const serverSubmission = await syncLeadSubmissionToServer(localSubmission);
+    const finalSubmission = serverSubmission || localSubmission;
+    const actualJoinCount = applyLeadSubmission(finalSubmission);
+
+    renderAll();
+    document.querySelector("#drawerBody").innerHTML = renderSuccessPanel({
+      name: finalSubmission.lead.name,
+      actualJoinCount: finalSubmission.actualJoinCount || actualJoinCount,
+      shareRef: finalSubmission.shareRef,
+      shareText: sharePrompt(finalSubmission.shareRef)
+    });
+    bindSuccessPanelButtons();
+    if (!serverSubmission && isPublicPage) showToast("已本机保存，服务器同步失败时请稍后刷新重试");
+  });
+}
+
+function makeSourceKey(name, fallback) {
+  const known = [
+    ["朋友圈", "moments"],
+    ["微信群", "wechat_group"],
+    ["家长群", "parent_group"],
+    ["抖音", "douyin"],
+    ["小红书", "xiaohongshu"],
+    ["老师", "teacher"],
+    ["视频", "video"]
+  ];
+  const match = known.find(([keyword]) => name.includes(keyword));
+  return `${match ? match[1] : "source"}_${String(fallback).padStart(2, "0")}`;
+}
+
+function bindGeneratedChannelButtons() {
+  document.querySelector("#drawerBody").querySelectorAll("[data-close-drawer]").forEach((button) => {
+    button.addEventListener("click", closeDrawer);
+  });
+  document.querySelector("#drawerBody").querySelector("[data-copy-channel]")?.addEventListener("click", async (event) => {
+    const value = event.currentTarget.dataset.copyChannel;
+    try {
+      await navigator.clipboard.writeText(value);
+      event.currentTarget.textContent = "已复制";
+    } catch {
+      event.currentTarget.textContent = value;
+    }
+  });
+}
+
+function bindChrome() {
+  document.querySelectorAll(".tab-button").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".tab-button").forEach((item) => item.classList.remove("is-active"));
+      button.classList.add("is-active");
+      document.querySelector(".workspace").dataset.currentView = button.dataset.view;
+    });
+  });
+
+  document.querySelectorAll("[data-local-view]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const view = button.dataset.localView;
+      document.querySelector(".workspace").dataset.currentView = view;
+      document.querySelectorAll("[data-local-view]").forEach((item) => item.classList.toggle("is-active", item.dataset.localView === view));
+      document.querySelectorAll(".tab-button").forEach((item) => item.classList.toggle("is-active", item.dataset.view === view));
+    });
+  });
+
+  if (isAdminPreview) {
+    document.querySelector(".workspace").dataset.currentView = "admin";
+    document.querySelectorAll("[data-local-view]").forEach((item) => item.classList.toggle("is-active", item.dataset.localView === "admin"));
+    document.querySelectorAll(".tab-button").forEach((item) => item.classList.toggle("is-active", item.dataset.view === "admin"));
+  }
+
+  document.querySelectorAll(".admin-nav").forEach((button) => {
+    button.addEventListener("click", () => {
+      document.querySelectorAll(".admin-nav").forEach((item) => item.classList.remove("is-active"));
+      document.querySelectorAll(".admin-panel").forEach((item) => item.classList.remove("is-active"));
+      button.classList.add("is-active");
+      document.querySelector(`[data-admin-panel="${button.dataset.adminTab}"]`).classList.add("is-active");
+    });
+  });
+
+  document.querySelectorAll("[data-lead-filter]").forEach((button) => {
+    button.addEventListener("click", () => setLeadFilter(button.dataset.leadFilter));
+  });
+
+  document.querySelector("#exportLeadData")?.addEventListener("click", exportLeadData);
+  document.querySelector("#exportReferralData")?.addEventListener("click", exportReferralData);
+  document.querySelector("#saveVisibility")?.addEventListener("click", () => {
+    document.querySelectorAll("[data-visibility-setting]").forEach((input) => {
+      state.visibility[input.dataset.visibilitySetting] = input.checked;
+    });
+      saveState();
+      applyVisibilitySettings();
+      renderJoins();
+      publishState();
+      showToast("前台显示设置已保存");
+    });
+
+  document.querySelector("#publishActivity")?.addEventListener("click", () => {
+    publishState();
+  });
+
+  document.body.addEventListener("click", (event) => {
+    const trackButton = event.target.closest("[data-track]");
+    if (trackButton) track(trackButton.dataset.track);
+
+    const shareButton = event.target.closest("[data-share]");
+    if (shareButton) shareActivity("page");
+
+    const panelButton = event.target.closest("[data-open-panel]");
+    if (panelButton) openDrawer(panelButton.dataset.openPanel);
+
+    if (event.target.closest("[data-close-drawer]")) closeDrawer();
+
+    const leadRow = event.target.closest("[data-lead-index]");
+    if (leadRow) {
+      state.selectedLead = Number(leadRow.dataset.leadIndex);
+      renderLeadRows();
+      renderLeadDetail();
+    }
+
+    if (event.target.closest("#saveLeadFollow")) {
+      const lead = state.leads[state.selectedLead];
+      const status = document.querySelector("#leadStatusSelect").value;
+      const note = document.querySelector("#leadNoteInput").value.trim();
+      lead.status = status;
+      lead.note = note;
+      if (!lead.actions.includes(`状态更新：${status}`)) lead.actions.unshift(`状态更新：${status}`);
+      saveState();
+      renderLeadRows();
+      renderLeadDetail();
+      renderHotLeads();
+      renderFollowReminders();
+      syncFullStateToServer();
+      const hint = document.querySelector("#followSavedHint");
+      if (hint) hint.textContent = "已保存";
+    }
+
+    const focusLead = event.target.closest("[data-focus-lead]");
+    if (focusLead) {
+      state.selectedLead = Number(focusLead.dataset.focusLead);
+      activeLeadFilter = "全部";
+      document.querySelectorAll("[data-lead-filter]").forEach((item) => item.classList.toggle("is-selected", item.dataset.leadFilter === "全部"));
+      document.querySelectorAll(".admin-nav").forEach((item) => item.classList.remove("is-active"));
+      document.querySelectorAll(".admin-panel").forEach((item) => item.classList.remove("is-active"));
+      document.querySelector('[data-admin-tab="leads"]').classList.add("is-active");
+      document.querySelector('[data-admin-panel="leads"]').classList.add("is-active");
+      renderLeadRows();
+      renderLeadDetail();
+    }
+
+    const removeField = event.target.closest("[data-remove-field]");
+    if (removeField) {
+      if (state.fields.length <= 2) {
+        showToast("至少保留姓名和联系方式");
+        return;
+      }
+      state.fields.splice(Number(removeField.dataset.removeField), 1);
+      saveState();
+      renderFields();
+      publishState();
+    }
+
+    const removeMaterial = event.target.closest("[data-remove-material]");
+    if (removeMaterial) {
+      state.materials.splice(Number(removeMaterial.dataset.removeMaterial), 1);
+      saveState();
+      renderMaterials();
+      renderMaterialsPreview();
+      publishState();
+    }
+
+    const clearFile = event.target.closest("[data-clear-material-file]");
+    if (clearFile) {
+      const material = state.materials[Number(clearFile.dataset.clearMaterialFile)];
+      if (!material) return;
+      material.fileName = "";
+      material.fileData = "";
+      material.mimeType = "";
+      saveState();
+      renderMaterials();
+      renderMaterialsPreview();
+      publishState();
+    }
+
+    const finishMaterial = event.target.closest("[data-finish-material]");
+    if (finishMaterial) {
+      saveState();
+      renderMaterialsPreview();
+      publishState();
+    }
+  });
+
+  document.querySelectorAll("[data-edit-activity]").forEach((input) => {
+    input.addEventListener("input", () => {
+      state.activity[input.dataset.editActivity] = input.value;
+      saveState();
+      renderActivity();
+      renderMetrics();
+    });
+  });
+
+  document.body.addEventListener("input", (event) => {
+    const input = event.target.closest("[data-edit-field]");
+    if (input) {
+      updateFieldFromControl(input);
+      return;
+    }
+    const materialInput = event.target.closest("[data-edit-material]");
+    if (materialInput) updateMaterialFromControl(materialInput);
+    const uploadInput = event.target.closest("[data-upload-material]");
+    if (uploadInput) uploadMaterialFile(uploadInput);
+  });
+
+  document.body.addEventListener("change", (event) => {
+    const input = event.target.closest("[data-edit-field]");
+    if (input) {
+      updateFieldFromControl(input);
+      publishState();
+      return;
+    }
+    const materialInput = event.target.closest("[data-edit-material]");
+    if (materialInput) updateMaterialFromControl(materialInput);
+  });
+
+  document.querySelector("#addField")?.addEventListener("click", () => {
+    state.fields.push({
+      key: `custom_${Date.now()}`,
+      name: "新问题",
+      type: "填空",
+      required: false,
+      options: []
+    });
+    saveState();
+    renderFields();
+    publishState();
+  });
+
+  document.querySelector("#addMaterial")?.addEventListener("click", () => {
+    state.materials.unshift({
+      type: "图片",
+      title: "新资料内容",
+      description: "填写这条内容的介绍，前台会作为资料包预览展示。",
+      url: "",
+      visibility: "前台预览"
+    });
+    saveState();
+    renderMaterials();
+    renderMaterialsPreview();
+    publishState();
+  });
+
+  document.querySelector("#resetActivity")?.addEventListener("click", () => {
+    state.activity = {
+      tag: "高三数学资料",
+      title: "高三导数专题资料包领取",
+      subtitle: "精选往季保校训练营导数题，进群领取小册子和配套讲解视频。",
+      joinLabel: "已领取",
+      totalQuota: "50",
+      deadline: "2026-06-10T22:00",
+      adminName: "高三导数资料包",
+      contentTitle: "资料预览",
+      contentNote: "题册 + 视频",
+      noticeLeft: "302 位高三学生/家长已领取",
+      ctaText: "立即领取资料",
+      formHint: "填写 4 项信息，提交后进群领取题册和讲解视频。",
+      teacherWechat: "math-guide-2026",
+      passphrase: "导数资料",
+      shareLead: "导数题容易卡住的同学很多，把这个资料入口发给他，也许正好能帮上。",
+      audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
+    };
+    saveState();
+    renderActivity();
+  });
+
+  document.querySelector("#resetDemoData")?.addEventListener("click", () => {
+    resetState();
+    renderAll();
+    showToast("已恢复演示数据");
+  });
+
+  window.addEventListener("beforeunload", () => {
+    syncVisitorBehavior();
+    syncVisitToServer(false, true);
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") {
+      syncVisitorBehavior();
+      syncVisitToServer(false, true);
+    }
+  });
+  window.setInterval(() => {
+    syncVisitorBehavior();
+    syncVisitToServer(false);
+  }, 10000);
+  window.setInterval(refreshPublishedState, 4000);
+  window.setInterval(renderCountdown, 1000);
+}
+
+function renderAll() {
+  state.currentSource = readCurrentSource();
+  if (state.sourceVisitRecorded !== state.currentSource.key) {
+    const channel = ensureChannelForSource(state.currentSource);
+    if (channel) channel.views += 1;
+    state.sourceVisitRecorded = state.currentSource.key;
+    saveState();
+  }
+  recordVisitSession();
+  if (isPublicPage && visitSession.serverSourceRecorded !== state.currentSource.key) {
+    visitSession.serverSourceRecorded = state.currentSource.key;
+    syncVisitToServer(true);
+  }
+  applyVisibilitySettings();
+  renderActivity();
+  renderSourceNotice();
+  renderJoins();
+  renderEvents();
+  renderHotLeads();
+  renderFollowReminders();
+  renderLeadRows();
+  renderLeadDetail();
+  renderChannels();
+  renderReferrals();
+  renderMaterials();
+  renderMaterialsPreview();
+  renderFields();
+  renderVisibilityControls();
+  renderMetrics();
+}
+
+hydratePublishedState().finally(() => {
+  bindChrome();
+  renderAll();
+});

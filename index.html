@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>教培招生互动获客系统原型</title>
+    <meta
+      name="description"
+      content="教培招生 H5、资料领取、进群接龙、学习诊断、渠道统计和客户跟进后台原型"
+    />
+    <script>
+      if (window.location.protocol === "file:") {
+        window.location.replace(`http://127.0.0.1:4173/${window.location.search || ""}${window.location.hash || ""}`);
+      }
+    </script>
+    <link rel="stylesheet" href="./styles.css?v=20260604-restored-followup" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">招生互动获客系统</p>
+          <h1>教培招生 H5 + 接龙 + CRM</h1>
+        </div>
+        <nav class="view-tabs" aria-label="视图切换">
+          <button class="tab-button is-active" data-view="workspace">总览</button>
+          <button class="tab-button" data-view="mobile">家长端</button>
+          <button class="tab-button" data-view="admin">后台</button>
+          <button class="tab-button danger-tab" id="resetDemoData">重置</button>
+        </nav>
+      </header>
+
+      <div class="local-view-switch" aria-label="本地预览切换">
+        <button data-local-view="mobile">家长端</button>
+        <button data-local-view="admin">后台</button>
+      </div>
+
+      <main class="workspace" data-current-view="workspace">
+        <section class="phone-stage" aria-label="家长端 H5">
+          <div class="phone-frame">
+            <div class="phone-status">
+              <span>10:28</span>
+              <span>5G 96%</span>
+            </div>
+            <div class="h5-page">
+              <section class="hero">
+                <div class="hero-main">
+                  <span class="pill" data-activity-field="tag">高三数学资料</span>
+                  <h2 data-activity-field="title">高三导数专题资料包领取</h2>
+                  <p data-activity-field="subtitle">精选往季保校训练营导数题，进群领取小册子和配套讲解视频。</p>
+                </div>
+                <button class="share-chip" data-share>分享</button>
+              </section>
+
+              <section class="stats-band" aria-label="活动数据">
+                <div>
+                  <strong id="viewCount">760</strong>
+                  <span>人看过</span>
+                </div>
+                <div>
+                  <strong id="joinCount">302</strong>
+                  <span data-activity-field="joinLabel">已领取</span>
+                </div>
+                <div>
+                  <strong id="remainingQuota">45</strong>
+                  <span>剩余名额</span>
+                </div>
+              </section>
+
+              <section class="countdown-card" aria-label="活动倒计时">
+                <div>
+                  <span>截止</span>
+                  <strong id="deadlineText">06月10日 22:00</strong>
+                </div>
+                <div class="countdown-units" id="countdownUnits">
+                  <span>距截止 7天14小时</span>
+                </div>
+              </section>
+
+              <section class="activity-media">
+                <div class="schedule-card">
+                  <div class="schedule-head">
+                    <span data-activity-field="contentTitle">资料预览</span>
+                    <small data-activity-field="contentNote">题册 + 视频</small>
+                  </div>
+                  <div class="content-preview-list" id="contentPreviewList"></div>
+                </div>
+              </section>
+
+              <section class="primary-action" aria-label="资料领取">
+                <button data-track="join_click" data-open-panel="join" data-activity-field="ctaText">立即领取资料</button>
+                <p data-activity-field="formHint">填写 4 项信息，提交后进群领取题册和讲解视频。</p>
+              </section>
+
+              <section class="notice-line">
+                <span data-activity-field="noticeLeft">302 位高三学生/家长已领取</span>
+                <span>报名信息前台脱敏展示</span>
+              </section>
+              <section class="source-notice" id="sourceNotice">当前来源：自然访问</section>
+
+              <section class="join-list" aria-label="接龙名单">
+                <div class="section-title">
+                  <h3>近期领取动态</h3>
+                  <button data-open-panel="allJoins">查看全部</button>
+                </div>
+                <div class="join-scroll" id="recentJoins"></div>
+              </section>
+
+              <section class="course-block">
+                <div class="section-title">
+                  <h3>适合人群</h3>
+                  <button data-track="detail_click" data-open-panel="detail">详情</button>
+                </div>
+                <ul id="audienceList">
+                  <li>导数基础题能做，但压轴题不稳定</li>
+                  <li>恒成立、零点、分类讨论容易卡住</li>
+                  <li>想进群跟着刷题和看讲解视频</li>
+                </ul>
+              </section>
+
+              <div class="sticky-cta">
+                <button data-open-panel="join" data-track="sticky_join" data-activity-field="ctaText">立即领取资料</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="admin-stage" aria-label="后台管理">
+          <div class="admin-shell">
+            <aside class="admin-side">
+              <div class="brand-mark">
+                <span>招</span>
+                <div>
+                  <strong>招生后台</strong>
+                  <small data-activity-field="adminName">高三导数资料包</small>
+                </div>
+              </div>
+              <button class="admin-nav" data-admin-tab="activity">活动管理</button>
+              <button class="admin-nav is-active" data-admin-tab="dashboard">数据总览</button>
+              <button class="admin-nav" data-admin-tab="leads">客户 CRM</button>
+              <button class="admin-nav" data-admin-tab="channels">渠道链接</button>
+              <button class="admin-nav" data-admin-tab="referrals">分享关系</button>
+              <button class="admin-nav" data-admin-tab="materials">资料内容</button>
+              <button class="admin-nav" data-admin-tab="form">表单配置</button>
+              <button class="admin-nav" data-admin-tab="visibility">公开设置</button>
+              <button class="admin-nav" data-admin-tab="manual">使用说明</button>
+            </aside>
+
+            <div class="admin-content">
+              <section class="admin-panel" data-admin-panel="activity">
+                <div class="admin-head">
+                  <div>
+                    <p class="eyebrow">最小运营单元</p>
+                    <h2>活动管理</h2>
+                  </div>
+                  <div class="admin-actions">
+                    <button class="secondary-button" id="resetActivity">恢复示例</button>
+                    <button class="primary-button" id="publishActivity">保存并发布</button>
+                  </div>
+                </div>
+                <div class="activity-editor">
+                  <article class="panel-box">
+                    <div class="section-title">
+                      <h3>页面基础信息</h3>
+                      <span>修改后左侧实时预览</span>
+                    </div>
+                    <div class="editor-grid">
+                      <label>
+                        活动标签
+                        <input data-edit-activity="tag" value="高三数学资料" />
+                      </label>
+                      <label>
+                        活动标题
+                        <input data-edit-activity="title" value="高三导数专题资料包领取" />
+                      </label>
+                      <label class="wide">
+                        活动副标题
+                        <textarea data-edit-activity="subtitle" rows="3">精选往季保校训练营导数题，进群领取小册子和配套讲解视频。</textarea>
+                      </label>
+                      <label>
+                        领取人数文案
+                        <input data-edit-activity="joinLabel" value="已领取" />
+                      </label>
+                      <label>
+                        主按钮文案
+                        <input data-edit-activity="ctaText" value="立即领取资料" />
+                      </label>
+                      <label>
+                        总名额
+                        <input data-edit-activity="totalQuota" value="50" />
+                      </label>
+                      <label>
+                        截止时间
+                        <input data-edit-activity="deadline" value="2026-06-10T22:00" />
+                      </label>
+                      <label>
+                        资料区标题
+                        <input data-edit-activity="contentTitle" value="资料预览" />
+                      </label>
+                      <label>
+                        资料区说明
+                        <input data-edit-activity="contentNote" value="题册 + 视频" />
+                      </label>
+                      <label>
+                        老师微信
+                        <input data-edit-activity="teacherWechat" value="math-guide-2026" />
+                      </label>
+                      <label>
+                        进群口令
+                        <input data-edit-activity="passphrase" value="导数资料" />
+                      </label>
+                      <label class="wide">
+                        表单提示语
+                        <textarea data-edit-activity="formHint" rows="2">填写 4 项信息，提交后进群领取题册和讲解视频。</textarea>
+                      </label>
+                      <div class="wide config-note">
+                        前台人数提示会自动按真实领取人数生成，例如“5 位高三学生/家长已领取”。
+                      </div>
+                      <label class="wide">
+                        分享引导语
+                        <textarea data-edit-activity="shareLead" rows="3">导数题容易卡住的同学很多，把这个资料入口发给他，也许正好能帮上。</textarea>
+                      </label>
+                    </div>
+                  </article>
+
+                  <article class="panel-box">
+                    <div class="section-title">
+                      <h3>运营目标</h3>
+                      <span>第一轮试运营</span>
+                    </div>
+                    <div class="goal-list">
+                      <div><strong>1. 建群</strong><span>把高三学生/家长聚到一个资料领取群</span></div>
+                      <div><strong>2. 发资料</strong><span>发导数小册子和配套讲解视频</span></div>
+                      <div><strong>3. 看互动</strong><span>记录谁领取、谁进群、谁做诊断</span></div>
+                      <div><strong>4. 再转化</strong><span>从活跃用户里筛出训练营意向</span></div>
+                    </div>
+                  </article>
+                </div>
+              </section>
+
+              <section class="admin-panel is-active" data-admin-panel="dashboard">
+                <div class="admin-head">
+                  <div>
+                    <p class="eyebrow">今日概况</p>
+                    <h2>数据总览</h2>
+                  </div>
+                  <button class="secondary-button" id="exportLeadData">导出数据</button>
+                </div>
+                <div class="metric-grid">
+                  <article><span>访问人数</span><strong id="metricViews">760</strong><small>较昨日 +18%</small></article>
+                  <article><span>资料领取</span><strong id="metricJoins">302</strong><small>转化率 39.7%</small></article>
+                  <article><span>诊断完成</span><strong id="metricDiagnosis">126</strong><small>高意向 42 人</small></article>
+                  <article><span>预约试听</span><strong id="metricTrials">38</strong><small>待跟进 12 人</small></article>
+                </div>
+                <article class="panel-box follow-reminder-panel">
+                  <div class="section-title">
+                    <h3>今日跟进提醒</h3>
+                    <span>把领取用户变成老师待办</span>
+                  </div>
+                  <div class="follow-reminder-grid" id="followReminderBoard"></div>
+                </article>
+                <div class="two-col">
+                  <article class="panel-box">
+                    <div class="section-title">
+                      <h3>互动热度</h3>
+                      <span>实时记录</span>
+                    </div>
+                    <div class="event-bars" id="eventBars"></div>
+                  </article>
+                  <article class="panel-box">
+                    <div class="section-title">
+                      <h3>今日优先跟进</h3>
+                      <span>按意向和行为排序</span>
+                    </div>
+                    <div id="hotLeadList" class="lead-stack"></div>
+                  </article>
+                </div>
+              </section>
+
+              <section class="admin-panel" data-admin-panel="leads">
+                <div class="admin-head">
+                  <div>
+                    <p class="eyebrow">客户管理</p>
+                    <h2>客户 CRM</h2>
+                  </div>
+                  <div class="segmented" id="leadFilterGroup">
+                    <button class="is-selected" data-lead-filter="全部">全部</button>
+                    <button data-lead-filter="新领取">新领取</button>
+                    <button data-lead-filter="已进群">已进群</button>
+                  </div>
+                </div>
+                <div class="crm-layout">
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>客户</th>
+                          <th>年级</th>
+                          <th>科目</th>
+                          <th>来源</th>
+                          <th>意向</th>
+                          <th>状态</th>
+                        </tr>
+                      </thead>
+                      <tbody id="leadRows"></tbody>
+                    </table>
+                  </div>
+                  <aside class="lead-detail" id="leadDetail"></aside>
+                </div>
+              </section>
+
+              <section class="admin-panel" data-admin-panel="channels">
+                <div class="admin-head">
+                  <div>
+                    <p class="eyebrow">来源追踪</p>
+                    <h2>传播统计</h2>
+                  </div>
+                  <button class="primary-button" data-open-panel="newChannel">新建链接</button>
+                </div>
+                <div class="channel-summary" id="channelSummary"></div>
+                <div class="channel-list" id="channelList"></div>
+              </section>
+
+              <section class="admin-panel" data-admin-panel="referrals">
+                <div class="admin-head">
+                  <div>
+                    <p class="eyebrow">裂变关系</p>
+                    <h2>分享关系</h2>
+                  </div>
+                  <button class="secondary-button" id="exportReferralData">导出关系</button>
+                </div>
+                <div class="referral-summary" id="referralSummary"></div>
+                <div class="referral-list" id="referralList"></div>
+              </section>
+
+              <section class="admin-panel" data-admin-panel="materials">
+                <div class="admin-head">
+                  <div>
+                    <p class="eyebrow">资料包素材</p>
+                    <h2>资料内容</h2>
+                  </div>
+                  <button class="primary-button" id="addMaterial">添加内容</button>
+                </div>
+                <div class="material-list" id="materialList"></div>
+              </section>
+
+              <section class="admin-panel" data-admin-panel="form">
+                <div class="admin-head">
+                  <div>
+                    <p class="eyebrow">可配置字段</p>
+                    <h2>报名表单</h2>
+                  </div>
+                  <button class="primary-button" id="addField">添加字段</button>
+                </div>
+                <div class="form-builder" id="formBuilder"></div>
+              </section>
+
+              <section class="admin-panel" data-admin-panel="visibility">
+                <div class="admin-head">
+                  <div>
+                    <p class="eyebrow">接龙公开规则</p>
+                    <h2>前台显示设置</h2>
+                  </div>
+                  <button class="secondary-button" id="saveVisibility">保存设置</button>
+                </div>
+                <div class="settings-grid">
+                  <label><input type="checkbox" data-visibility-setting="showStats" checked /> 显示报名人数</label>
+                  <label><input type="checkbox" data-visibility-setting="showRecentJoins" checked /> 显示最近报名动态</label>
+                  <label><input type="checkbox" data-visibility-setting="showAvatars" checked /> 显示圆形头像</label>
+                  <label><input type="checkbox" data-visibility-setting="maskNames" checked /> 姓名脱敏展示</label>
+                  <label><input type="checkbox" data-visibility-setting="showGradeSubject" checked /> 显示年级和科目</label>
+                  <label><input type="checkbox" data-visibility-setting="showFullList" /> 显示完整名单</label>
+                  <label><input type="checkbox" data-visibility-setting="showCampus" /> 显示来源/校区</label>
+                  <label><input type="checkbox" data-visibility-setting="showPhone" /> 显示手机号</label>
+                </div>
+              </section>
+
+              <section class="admin-panel" data-admin-panel="manual">
+                <div class="admin-head">
+                  <div>
+                    <p class="eyebrow">原型说明</p>
+                    <h2>系统使用说明</h2>
+                  </div>
+                  <span class="manual-status">当前阶段：本地原型</span>
+                </div>
+                <div class="manual-grid">
+                  <article class="panel-box manual-card is-main">
+                    <div class="section-title">
+                      <h3>这个系统解决什么问题</h3>
+                      <span>招生最小闭环</span>
+                    </div>
+                    <p>
+                      用一个资料领取 H5，把家长从“看到活动”带到“填写信息、领取资料、加老师微信、进群、后续跟进”。
+                      后台记录来源、停留、点击、分享关系和跟进状态，帮助老师判断谁更值得优先联系。
+                    </p>
+                    <div class="manual-flow">
+                      <span>看页面</span>
+                      <span>填信息</span>
+                      <span>领资料</span>
+                      <span>加微信/进群</span>
+                      <span>后台跟进</span>
+                    </div>
+                  </article>
+
+                  <article class="panel-box manual-card">
+                    <div class="section-title">
+                      <h3>家长端怎么用</h3>
+                      <span>给家长/学生看的页面</span>
+                    </div>
+                    <ul class="manual-list">
+                      <li>打开活动链接，先看标题、人数、截止时间和资料预览。</li>
+                      <li>点击“立即领取资料”，填写学生姓名、联系方式和学习问题。</li>
+                      <li>提交后看到领取成功页，复制老师微信或进群口令。</li>
+                      <li>可以把活动分享给同学或家长，系统会记录来源关系。</li>
+                    </ul>
+                  </article>
+
+                  <article class="panel-box manual-card">
+                    <div class="section-title">
+                      <h3>后台怎么用</h3>
+                      <span>给老师/运营看的页面</span>
+                    </div>
+                    <ul class="manual-list">
+                      <li>活动管理：修改标题、名额、截止时间、老师微信和分享文案。</li>
+                      <li>数据总览：看访问、领取、互动和今日跟进提醒。</li>
+                      <li>客户 CRM：查看客户信息、来源、停留时间、分享贡献和跟进状态。</li>
+                      <li>资料内容：添加文字、图片、视频、语音、PDF 等资料展示。</li>
+                      <li>表单配置：调整家长需要填写的信息。</li>
+                    </ul>
+                  </article>
+
+                  <article class="panel-box manual-card">
+                    <div class="section-title">
+                      <h3>本地怎么打开</h3>
+                      <span>当前原型地址</span>
+                    </div>
+                    <ul class="manual-list">
+                      <li>家长端：打开 http://127.0.0.1:4173/。</li>
+                      <li>管理端：打开 http://127.0.0.1:4173/?admin=1。</li>
+                      <li>不要直接打开 file:// 文件地址，否则后台保存、发布和统计接口不会稳定生效。</li>
+                      <li>误打开本地文件时，页面会自动跳回本地服务地址。</li>
+                    </ul>
+                  </article>
+
+                  <article class="panel-box manual-card">
+                    <div class="section-title">
+                      <h3>已经实现</h3>
+                      <span>现在能体验的功能</span>
+                    </div>
+                    <div class="manual-checks">
+                      <span>家长端 H5 页面</span>
+                      <span>资料领取表单</span>
+                      <span>领取成功页</span>
+                      <span>资料内容编辑</span>
+                      <span>近期领取动态</span>
+                      <span>访问/停留/点击记录</span>
+                      <span>渠道来源记录</span>
+                      <span>分享关系展示</span>
+                      <span>客户 CRM 跟进</span>
+                      <span>CRM 状态筛选</span>
+                      <span>客户/关系 CSV 导出</span>
+                      <span>前台显示设置</span>
+                      <span>今日跟进提醒</span>
+                      <span>后台保存并发布</span>
+                      <span>资料/表单改动同步</span>
+                    </div>
+                  </article>
+
+                  <article class="panel-box manual-card">
+                    <div class="section-title">
+                      <h3>还没有实现</h3>
+                      <span>后面要补的功能</span>
+                    </div>
+                    <ul class="manual-list pending">
+                      <li>真实微信头像需要接微信授权，目前是模拟头像。</li>
+                      <li>文件上传当前存进本地原型数据，正式上线建议接服务器文件存储。</li>
+                      <li>后台登录、数据库、小程序版本还没有接入。</li>
+                      <li>临时公网只能用于预览，正式传播需要部署到阿里云和正式域名。</li>
+                    </ul>
+                  </article>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div class="drawer" id="drawer" aria-hidden="true">
+      <div class="drawer-backdrop" data-close-drawer></div>
+      <section class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+        <button class="drawer-close" data-close-drawer>×</button>
+        <h2 id="drawerTitle"></h2>
+        <div id="drawerBody"></div>
+      </section>
+    </div>
+
+    <script src="./script.js?v=20260604-restored-followup"></script>
+  </body>
+</html>

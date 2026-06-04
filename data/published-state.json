@@ -1,0 +1,371 @@
+{
+  "activity": {
+    "tag": "高三数学资料",
+    "title": "高三导数专题资料包领取",
+    "subtitle": "精选往季保校训练营导数题，进群领取小册子和配套讲解视频。",
+    "joinLabel": "已领取",
+    "totalQuota": "50",
+    "deadline": "2026-06-10T22:00",
+    "adminName": "高三导数资料包",
+    "contentTitle": "资料预览",
+    "contentNote": "题册 + 视频",
+    "noticeLeft": "302 位高三学生/家长已领取",
+    "ctaText": "立即领取资料",
+    "formHint": "填写 4 项信息，提交后进群领取题册和讲解视频。",
+    "teacherWechat": "math-guide-2026",
+    "passphrase": "导数资料",
+    "shareLead": "导数题容易卡住的同学很多，把这个资料入口发给他，也许正好能帮上。",
+    "audience": [
+      "导数基础题能做，但压轴题不稳定",
+      "恒成立、零点、分类讨论容易卡住",
+      "想进群跟着刷题和看讲解视频"
+    ]
+  },
+  "followStatuses": [
+    "新领取",
+    "已加微信",
+    "已进群",
+    "已发资料",
+    "已互动",
+    "有训练营意向",
+    "已报名",
+    "无效"
+  ],
+  "joins": [
+    {
+      "id": 302,
+      "name": "肖雅雯",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "张老师朋友圈",
+      "time": "刚刚",
+      "avatar": "肖",
+      "avatarColor": "#2f9b57"
+    },
+    {
+      "id": 301,
+      "name": "陈伟",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "微信群",
+      "time": "2分钟前",
+      "avatar": "陈",
+      "avatarColor": "#3b82c4"
+    },
+    {
+      "id": 300,
+      "name": "李同学",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "抖音短视频",
+      "time": "5分钟前",
+      "avatar": "李",
+      "avatarColor": "#d97706"
+    },
+    {
+      "id": 299,
+      "name": "王子涵",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "小红书",
+      "time": "8分钟前",
+      "avatar": "王",
+      "avatarColor": "#9b5bd6"
+    },
+    {
+      "id": 298,
+      "name": "张俊",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "老师私发",
+      "time": "12分钟前",
+      "avatar": "张",
+      "avatarColor": "#0f8f8f"
+    }
+  ],
+  "leads": [
+    {
+      "name": "肖雅雯",
+      "phone": "18130050515",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "张老师朋友圈",
+      "score": 92,
+      "status": "已进群",
+      "issue": "导数压轴题不稳",
+      "note": "已进资料群，适合推导数专题训练。",
+      "actions": [
+        "访问 3 次",
+        "完成诊断",
+        "进群接龙",
+        "点击预约试听"
+      ]
+    },
+    {
+      "name": "陈伟",
+      "phone": "18905694821",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "微信群",
+      "score": 78,
+      "status": "已加微信",
+      "issue": "恒成立分类讨论",
+      "note": "已加微信，等老师拉群。",
+      "actions": [
+        "访问 2 次",
+        "查看资料内容",
+        "进群接龙"
+      ]
+    },
+    {
+      "name": "李同学",
+      "phone": "13956092344",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "抖音短视频",
+      "score": 64,
+      "status": "已发资料",
+      "issue": "零点问题卡住",
+      "note": "资料已私发，后续观察是否看视频。",
+      "actions": [
+        "访问 1 次",
+        "领取资料",
+        "资料领取"
+      ]
+    },
+    {
+      "name": "王子涵",
+      "phone": "17305691230",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "小红书",
+      "score": 57,
+      "status": "新领取",
+      "issue": "导数复习规划不清",
+      "note": "还未添加老师微信。",
+      "actions": [
+        "访问 1 次",
+        "痛点投票"
+      ]
+    },
+    {
+      "name": "刘同学",
+      "phone": "18600001234",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "肖雅雯分享",
+      "score": 71,
+      "status": "新领取",
+      "issue": "恒成立分类讨论",
+      "note": "由肖雅雯分享带入，等待添加老师微信。",
+      "actions": [
+        "通过肖雅雯分享进入",
+        "领取导数资料"
+      ]
+    },
+    {
+      "name": "赵同学",
+      "phone": "18600005678",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "肖雅雯分享",
+      "score": 69,
+      "status": "已加微信",
+      "issue": "函数构造不会",
+      "note": "由肖雅雯分享带入，已加老师微信。",
+      "actions": [
+        "通过肖雅雯分享进入",
+        "已加微信"
+      ]
+    },
+    {
+      "name": "周同学",
+      "phone": "18600009876",
+      "grade": "高三",
+      "subject": "数学",
+      "source": "陈伟分享",
+      "score": 66,
+      "status": "已进群",
+      "issue": "零点问题卡住",
+      "note": "由陈伟分享带入，已进入资料群。",
+      "actions": [
+        "通过陈伟分享进入",
+        "已进资料群"
+      ]
+    }
+  ],
+  "channels": [
+    {
+      "type": "老师渠道",
+      "name": "张老师朋友圈",
+      "source": "teacher_zhang",
+      "views": 218,
+      "joins": 86,
+      "shares": 14,
+      "leads": [
+        "肖雅雯",
+        "陈伟",
+        "张俊"
+      ]
+    },
+    {
+      "type": "社群渠道",
+      "name": "微信群",
+      "source": "wechat_group_01",
+      "views": 164,
+      "joins": 72,
+      "shares": 9,
+      "leads": [
+        "陈伟",
+        "李同学"
+      ]
+    },
+    {
+      "type": "短视频渠道",
+      "name": "抖音导数视频 01",
+      "source": "douyin_derivative_001",
+      "views": 201,
+      "joins": 59,
+      "shares": 18,
+      "leads": [
+        "李同学"
+      ]
+    },
+    {
+      "type": "图文渠道",
+      "name": "小红书笔记",
+      "source": "xiaohongshu_note_0529",
+      "views": 93,
+      "joins": 31,
+      "shares": 7,
+      "leads": [
+        "王子涵"
+      ]
+    },
+    {
+      "type": "家长分享",
+      "name": "肖雅雯分享",
+      "source": "user_303",
+      "views": 42,
+      "joins": 11,
+      "shares": 4,
+      "leads": [
+        "刘同学",
+        "赵同学"
+      ]
+    },
+    {
+      "type": "家长分享",
+      "name": "陈伟分享",
+      "source": "user_301",
+      "views": 28,
+      "joins": 6,
+      "shares": 2,
+      "leads": [
+        "周同学"
+      ]
+    }
+  ],
+  "fields": [
+    {
+      "key": "name",
+      "name": "学生姓名或昵称",
+      "type": "填空",
+      "required": true,
+      "options": []
+    },
+    {
+      "key": "phone",
+      "name": "联系方式",
+      "type": "填空",
+      "required": true,
+      "options": []
+    },
+    {
+      "key": "scoreRange",
+      "name": "最近数学分数区间",
+      "type": "单选",
+      "required": false,
+      "options": [
+        "90 分以下",
+        "90-110 分",
+        "110-130 分",
+        "130 分以上"
+      ]
+    },
+    {
+      "key": "issue",
+      "name": "导数最卡在哪里",
+      "type": "单选",
+      "required": false,
+      "options": [
+        "导数压轴题不稳",
+        "恒成立分类讨论",
+        "零点问题卡住",
+        "函数构造不会"
+      ]
+    }
+  ],
+  "materials": [
+    {
+      "type": "图片",
+      "title": "高三导数好题封面预览",
+      "description": "洛优好题系列导数专题封面，家长可第一眼看到资料质感。",
+      "body": "",
+      "teaserText": "",
+      "url": "./assets/daoshu-preview-cover.png",
+      "fileName": "daoshu-preview-cover.png",
+      "fileData": "",
+      "mimeType": "image/png",
+      "visibility": "前台预览"
+    }
+  ],
+  "events": {
+    "page_view": 776,
+    "interest_click": 96,
+    "diagnosis_click": 126,
+    "join_click": 303,
+    "trial_click": 38,
+    "share_click": 54,
+    "sticky_join": 4
+  },
+  "visibility": {
+    "showStats": true,
+    "showRecentJoins": true,
+    "showAvatars": true,
+    "maskNames": true,
+    "showGradeSubject": true,
+    "showFullList": false,
+    "showCampus": false,
+    "showPhone": false
+  },
+  "currentSource": {
+    "kind": "direct",
+    "key": "direct"
+  },
+  "sourceVisitRecorded": "direct",
+  "visitors": {
+    "visitor_1780525361741_knmxab": {
+      "id": "visitor_1780525361741_knmxab",
+      "visits": 41,
+      "totalSeconds": 3774,
+      "currentSeconds": 60,
+      "maxSeconds": 1275,
+      "clicks": 5,
+      "lastSource": "自然访问",
+      "lastSeen": "06-04 11:20"
+    },
+    "visitor_1780543256155_15qwno": {
+      "id": "visitor_1780543256155_15qwno",
+      "visits": 5,
+      "totalSeconds": 881,
+      "currentSeconds": 40,
+      "maxSeconds": 322,
+      "clicks": 0,
+      "lastSource": "自然访问",
+      "lastSeen": "06-04 16:53"
+    }
+  },
+  "selectedLead": 0,
+  "publishedAt": "2026-06-04T08:53:35.806Z"
+}
