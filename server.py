@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 import copy
 import json
+import os
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import RLock
 from time import localtime, strftime
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, quote, urlencode, urlparse
+from urllib.request import urlopen
 
 
 ROOT = Path(__file__).resolve().parent
@@ -13,6 +15,9 @@ STATE_FILE = ROOT / "data" / "published-state.json"
 STATE_LOCK = RLock()
 SYSTEM_AVATAR_COUNT = 60
 SYSTEM_AVATAR_BASE_COUNT = 24
+WECHAT_APP_ID = os.environ.get("WECHAT_APP_ID", "").strip()
+WECHAT_APP_SECRET = os.environ.get("WECHAT_APP_SECRET", "").strip()
+WECHAT_AUTH_ENABLED = os.environ.get("WECHAT_AUTH_ENABLED", "").strip() == "1"
 
 
 def route(path):
@@ -40,6 +45,76 @@ def ensure_state_shape(state):
     state.setdefault("events", {})
     state.setdefault("visitors", {})
     return state
+
+
+def public_wechat_config():
+    return {
+        "enabled": bool(WECHAT_AUTH_ENABLED and WECHAT_APP_ID),
+        "appId": WECHAT_APP_ID if WECHAT_AUTH_ENABLED else "",
+        "scope": os.environ.get("WECHAT_OAUTH_SCOPE", "snsapi_userinfo").strip() or "snsapi_userinfo",
+        "configured": bool(WECHAT_APP_ID and WECHAT_APP_SECRET),
+        "callbackPath": "/api/wechat/callback"
+    }
+
+
+def build_oauth_url(redirect_url):
+    config = public_wechat_config()
+    params = {
+        "appid": config["appId"],
+        "redirect_uri": redirect_url,
+        "response_type": "code",
+        "scope": config["scope"],
+        "state": "edu_leads_h5"
+    }
+    return f"https://open.weixin.qq.com/connect/oauth2/authorize?{urlencode(params)}#wechat_redirect"
+
+
+def request_origin(handler):
+    scheme = "https" if handler.headers.get("X-Forwarded-Proto") == "https" else "http"
+    host = handler.headers.get("Host", "127.0.0.1:4173")
+    return f"{scheme}://{host}"
+
+
+def exchange_wechat_code(code):
+    if not WECHAT_APP_ID or not WECHAT_APP_SECRET:
+        raise ValueError("wechat app id or secret missing")
+    token_url = (
+        "https://api.weixin.qq.com/sns/oauth2/access_token?"
+        + urlencode({
+            "appid": WECHAT_APP_ID,
+            "secret": WECHAT_APP_SECRET,
+            "code": code,
+            "grant_type": "authorization_code"
+        })
+    )
+    with urlopen(token_url, timeout=8) as response:
+        token_payload = json.loads(response.read().decode("utf-8"))
+    if token_payload.get("errcode"):
+        raise ValueError(token_payload.get("errmsg") or "wechat token failed")
+
+    identity = {
+        "openid": token_payload.get("openid", ""),
+        "nickname": "",
+        "avatarUrl": "",
+        "authorizedAt": now_label(),
+        "scope": token_payload.get("scope", "")
+    }
+
+    if "snsapi_userinfo" in str(token_payload.get("scope", "")) and token_payload.get("access_token") and token_payload.get("openid"):
+        user_url = (
+            "https://api.weixin.qq.com/sns/userinfo?"
+            + urlencode({
+                "access_token": token_payload.get("access_token"),
+                "openid": token_payload.get("openid"),
+                "lang": "zh_CN"
+            })
+        )
+        with urlopen(user_url, timeout=8) as response:
+            user_payload = json.loads(response.read().decode("utf-8"))
+        if not user_payload.get("errcode"):
+            identity["nickname"] = user_payload.get("nickname", "")
+            identity["avatarUrl"] = user_payload.get("headimgurl", "")
+    return identity
 
 
 def now_label():
@@ -158,6 +233,14 @@ def merge_visitor(state, visitor_id, behavior, source):
             pass
     current["lastSource"] = source_label(state, source)
     current["lastSeen"] = behavior.get("lastSeen") or now_label()
+    wechat_identity = behavior.get("wechatIdentity")
+    if isinstance(wechat_identity, dict) and wechat_identity.get("openid"):
+        current["wechatIdentity"] = {
+            "openid": wechat_identity.get("openid", ""),
+            "nickname": wechat_identity.get("nickname", ""),
+            "avatarUrl": wechat_identity.get("avatarUrl", ""),
+            "authorizedAt": wechat_identity.get("authorizedAt", "")
+        }
 
 
 def replace_share_action(actions, share_url):
@@ -174,6 +257,51 @@ def replace_share_action(actions, share_url):
     if not replaced:
         next_actions.insert(0, f"专属分享链接：{share_url}")
     return next_actions
+
+
+def lead_openid(lead):
+    identity = lead.get("wechatIdentity") or (lead.get("behavior") or {}).get("wechatIdentity") or {}
+    return identity.get("openid", "") if isinstance(identity, dict) else ""
+
+
+def find_existing_lead_index(state, lead):
+    phone = str(lead.get("phone") or "").strip()
+    openid = lead_openid(lead)
+    if not phone and not openid:
+        return -1
+    for index, item in enumerate(state.get("leads", [])):
+        if openid and lead_openid(item) == openid:
+            return index
+        if phone and str(item.get("phone") or "").strip() == phone:
+            return index
+    return -1
+
+
+def find_existing_join_index(state, lead):
+    phone = str(lead.get("phone") or "").strip()
+    openid = lead_openid(lead)
+    for index, item in enumerate(state.get("joins", [])):
+        if lead.get("submissionId") and item.get("submissionId") == lead.get("submissionId"):
+            return index
+        identity = item.get("wechatIdentity") or {}
+        if openid and isinstance(identity, dict) and identity.get("openid") == openid:
+            return index
+        if phone and str(item.get("phone") or "").strip() == phone:
+            return index
+        if item.get("name") == lead.get("name"):
+            return index
+    return -1
+
+
+def merge_actions(existing, incoming):
+    seen = set()
+    merged = []
+    for action in list(incoming or []) + list(existing or []):
+        if not action or action in seen:
+            continue
+        seen.add(action)
+        merged.append(action)
+    return merged[:12]
 
 
 def add_lead_submission(state, payload):
@@ -211,6 +339,7 @@ def add_lead_submission(state, payload):
         "avatar": name[0],
         "avatarColor": incoming_join.get("avatarColor") or string_to_color(name),
         "avatarUrl": incoming_join.get("avatarUrl") or system_avatar_url(f"{name}-{incoming_lead.get('phone') or next_id}"),
+        "phone": incoming_lead.get("phone", ""),
         "submissionId": submission_id
     })
     incoming_lead.update({
@@ -220,7 +349,47 @@ def add_lead_submission(state, payload):
         "submissionId": submission_id,
         "createdAt": now_label()
     })
+    if isinstance(payload.get("wechatIdentity"), dict) and payload["wechatIdentity"].get("openid"):
+        incoming_lead["wechatIdentity"] = {
+            "openid": payload["wechatIdentity"].get("openid", ""),
+            "nickname": payload["wechatIdentity"].get("nickname", ""),
+            "avatarUrl": payload["wechatIdentity"].get("avatarUrl", ""),
+            "authorizedAt": payload["wechatIdentity"].get("authorizedAt", "")
+        }
+        if payload["wechatIdentity"].get("avatarUrl"):
+            incoming_join["avatarUrl"] = payload["wechatIdentity"]["avatarUrl"]
+        incoming_join["wechatIdentity"] = incoming_lead["wechatIdentity"]
     incoming_lead["actions"] = replace_share_action(incoming_lead.get("actions", []), share_url)
+
+    existing_index = find_existing_lead_index(state, incoming_lead)
+    if existing_index >= 0:
+        existing_lead = state["leads"].pop(existing_index)
+        incoming_lead["actions"] = merge_actions(
+            existing_lead.get("actions", []),
+            list(incoming_lead.get("actions", [])) + ["重复提交：已更新原客户档案"]
+        )
+        incoming_lead["score"] = max(int(existing_lead.get("score") or 0), int(incoming_lead.get("score") or 0))
+        incoming_lead["repeatSubmits"] = int(existing_lead.get("repeatSubmits") or 0) + 1
+        incoming_lead["createdAt"] = existing_lead.get("createdAt") or incoming_lead["createdAt"]
+        incoming_lead["updatedAt"] = now_label()
+        incoming_lead["shareRef"] = existing_lead.get("shareRef") or incoming_lead["shareRef"]
+        state["leads"].insert(0, {**existing_lead, **incoming_lead})
+
+        existing_join_index = find_existing_join_index(state, existing_lead)
+        if existing_join_index >= 0:
+            state["joins"].pop(existing_join_index)
+        incoming_join["id"] = existing_lead.get("joinId") or incoming_join.get("id")
+        state["joins"].insert(0, incoming_join)
+        state["events"]["repeat_submit"] = int(state["events"].get("repeat_submit") or 0) + 1
+        merge_visitor(state, payload.get("visitorId"), payload.get("behavior"), source)
+        return {
+            "duplicate": True,
+            "join": incoming_join,
+            "lead": state["leads"][0],
+            "actualJoinCount": len(state["joins"]),
+            "shareRef": state["leads"][0].get("shareRef"),
+            "shareUrl": share_url
+        }
 
     state["joins"].insert(0, incoming_join)
     state["leads"].insert(0, incoming_lead)
@@ -278,8 +447,27 @@ class Handler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def do_GET(self):
-        if route(self.path) == "/api/state":
+        current_route = route(self.path)
+        if current_route == "/api/state":
             self.send_json_state()
+            return
+        if current_route == "/api/wechat/config":
+            self.send_json(public_wechat_config())
+            return
+        if current_route == "/api/wechat/oauth-url":
+            if not public_wechat_config()["enabled"]:
+                self.send_json({"ok": False, "error": "wechat auth disabled"}, status=400)
+                return
+            query = parse_qs(urlparse(self.path).query)
+            redirect = query.get("redirect", [""])[0]
+            if not redirect:
+                self.send_json({"ok": False, "error": "missing redirect"}, status=400)
+                return
+            callback_url = f"{request_origin(self)}/api/wechat/callback?redirect={quote(redirect, safe='')}"
+            self.send_json({"ok": True, "url": build_oauth_url(callback_url)})
+            return
+        if current_route == "/api/wechat/callback":
+            self.handle_wechat_callback()
             return
         super().do_GET()
 
@@ -327,6 +515,35 @@ class Handler(SimpleHTTPRequestHandler):
                     self.send_error(404)
                     return
             self.send_json(result)
+        except Exception as exc:
+            self.send_json({"ok": False, "error": str(exc)}, status=400)
+
+    def handle_wechat_callback(self):
+        query = parse_qs(urlparse(self.path).query)
+        code = query.get("code", [""])[0]
+        redirect = query.get("redirect", ["/"])[0] or "/"
+        try:
+            if not code:
+                raise ValueError("missing wechat code")
+            identity = exchange_wechat_code(code)
+            payload = json.dumps(identity, ensure_ascii=False)
+            safe_redirect = json.dumps(redirect)
+            html = f"""<!doctype html>
+<html lang=\"zh-CN\">
+<meta charset=\"utf-8\" />
+<title>微信授权完成</title>
+<body>
+<p>微信身份已确认，正在返回页面...</p>
+<script>
+localStorage.setItem('zhaosheng_wechat_identity_v1', {json.dumps(payload)});
+window.location.replace({safe_redirect});
+</script>
+</body>
+</html>"""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(html.encode("utf-8"))
         except Exception as exc:
             self.send_json({"ok": False, "error": str(exc)}, status=400)
 

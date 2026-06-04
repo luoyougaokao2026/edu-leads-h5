@@ -2630,6 +2630,55 @@ tbody tr.is-selected {
   font-size: 14px;
 }
 
+.wechat-identity-card {
+  display: grid;
+  grid-template-columns: 42px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid #dfe8e3;
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.wechat-identity-card img,
+.wechat-identity-card > span {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+}
+
+.wechat-identity-card img {
+  object-fit: cover;
+}
+
+.wechat-identity-card > span {
+  display: grid;
+  place-items: center;
+  color: white;
+  background: var(--green);
+  font-weight: 900;
+}
+
+.wechat-identity-card b,
+.wechat-identity-card small {
+  display: block;
+}
+
+.wechat-identity-card small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.empty-hint {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
 .timeline {
   display: grid;
   gap: 10px;

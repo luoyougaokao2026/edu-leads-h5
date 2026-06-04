@@ -1,5 +1,6 @@
 const STORAGE_KEY = "zhaosheng_prototype_state_v1";
 const VISITOR_KEY = "zhaosheng_visitor_id";
+const WECHAT_IDENTITY_KEY = "zhaosheng_wechat_identity_v1";
 const DEFAULT_COVER_IMAGE = "./assets/daoshu-preview-cover.png";
 const LEGACY_COVER_IMAGES = ["./assets/luoyou-daoshu-cover.jpg"];
 const TEACHER_QR_IMAGE = "./assets/teacher-qr.svg";
@@ -259,6 +260,7 @@ const defaultState = {
 };
 
 const state = loadState();
+let wechatIdentity = loadWechatIdentity();
 const visitSession = {
   id: getVisitorId(),
   startedAt: Date.now(),
@@ -280,6 +282,45 @@ function loadState() {
   } catch {
     return structuredClone(defaultState);
   }
+}
+
+function loadWechatIdentity() {
+  try {
+    return JSON.parse(localStorage.getItem(WECHAT_IDENTITY_KEY)) || null;
+  } catch {
+    return null;
+  }
+}
+
+function saveWechatIdentity(identity) {
+  if (!identity?.openid) return;
+  wechatIdentity = identity;
+  localStorage.setItem(WECHAT_IDENTITY_KEY, JSON.stringify(identity));
+}
+
+function isWeChatBrowser() {
+  return /MicroMessenger/i.test(navigator.userAgent || "");
+}
+
+function initMockWechatIdentity() {
+  if (urlParams.get("mock_wechat") !== "1") return;
+  const seed = localStorage.getItem(VISITOR_KEY) || `mock_${Date.now()}`;
+  saveWechatIdentity({
+    openid: `mock_openid_${stableHash(seed).toString(16)}`,
+    nickname: "微信家长",
+    avatarUrl: getSystemAvatarUrl(seed),
+    authorizedAt: formatDateTime(new Date()),
+    mock: true
+  });
+}
+
+async function ensureWechatAuthorization() {
+  initMockWechatIdentity();
+  if (!isPublicPage || wechatIdentity?.openid || !isWeChatBrowser()) return;
+  const config = await postJsonSafeGet("/api/wechat/config");
+  if (!config?.enabled) return;
+  const authUrl = await postJsonSafeGet(`/api/wechat/oauth-url?redirect=${encodeURIComponent(window.location.href)}`);
+  if (authUrl?.url) window.location.replace(authUrl.url);
 }
 
 function normalizeStateSnapshot(snapshot) {
@@ -341,6 +382,16 @@ async function fetchPublishedState() {
   return null;
 }
 
+async function postJsonSafeGet(endpoint) {
+  try {
+    const response = await fetch(endpoint, { cache: "no-store" });
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
 async function hydratePublishedState() {
   const hasLocalDraft = Boolean(localStorage.getItem(STORAGE_KEY));
   const snapshot = await fetchPublishedState();
@@ -389,6 +440,7 @@ function serverSyncPayload(extra = {}) {
     visitorId: visitSession.id,
     source: state.currentSource,
     behavior: getVisitorSnapshot(),
+    wechatIdentity,
     ...extra
   };
 }
@@ -609,6 +661,11 @@ function maskName(name) {
   return `${name[0]}*`;
 }
 
+function maskOpenId(openid = "") {
+  if (openid.length <= 10) return openid || "未记录";
+  return `${openid.slice(0, 6)}...${openid.slice(-4)}`;
+}
+
 function publicName(name) {
   return state.visibility.maskNames ? maskName(name) : name;
 }
@@ -777,7 +834,8 @@ function getVisitorSnapshot() {
     maxSeconds: behavior.maxSeconds,
     clicks: behavior.clicks,
     lastSource: behavior.lastSource,
-    lastSeen: behavior.lastSeen
+    lastSeen: behavior.lastSeen,
+    wechatIdentity
   };
 }
 
@@ -1107,6 +1165,7 @@ function renderLeadDetail() {
   const lead = state.leads[state.selectedLead];
   const referral = state.channels.find((channel) => channel.type === "家长分享" && channel.name.startsWith(lead.name));
   const behavior = lead.behavior || {};
+  const leadWechat = lead.wechatIdentity || behavior.wechatIdentity || null;
   document.querySelector("#leadDetail").innerHTML = `
     <div class="brand-mark">
       <span>${lead.name[0]}</span>
@@ -1132,6 +1191,21 @@ function renderLeadDetail() {
         <div><span>页面点击</span><strong>${behavior.clicks || 0}</strong></div>
         <div><span>最后访问</span><strong>${behavior.lastSeen || "未记录"}</strong></div>
       </div>
+    </div>
+    <div class="behavior-box">
+      <strong>微信身份</strong>
+      ${
+        leadWechat?.openid
+          ? `<div class="wechat-identity-card">
+              ${leadWechat.avatarUrl ? `<img src="${leadWechat.avatarUrl}" alt="${leadWechat.nickname || "微信头像"}" />` : `<span>${leadWechat.nickname?.[0] || "微"}</span>`}
+              <div>
+                <b>${leadWechat.nickname || "已授权家长"}</b>
+                <small>openid：${maskOpenId(leadWechat.openid)}</small>
+                <small>授权时间：${leadWechat.authorizedAt || "已记录"}</small>
+              </div>
+            </div>`
+          : `<p class="empty-hint">未授权微信身份；可先按访客 ID 记录，提交手机号后合并。</p>`
+      }
     </div>
     <div class="behavior-box">
       <strong>填写信息</strong>
@@ -2071,6 +2145,7 @@ function createLeadSubmission(type, answers) {
     type,
     source: state.currentSource,
     visitorId: visitSession.id,
+    wechatIdentity,
     behavior,
     shareRef,
     shareUrl,
@@ -2085,7 +2160,7 @@ function createLeadSubmission(type, answers) {
       time: "刚刚",
       avatar: name[0] || "新",
       avatarColor: stringToColor(name),
-      avatarUrl: getSystemAvatarUrl(`${name}-${phone || fallbackId}`)
+      avatarUrl: wechatIdentity?.avatarUrl || getSystemAvatarUrl(`${name}-${phone || fallbackId}`)
     },
     lead: {
       name,
@@ -2099,6 +2174,7 @@ function createLeadSubmission(type, answers) {
       issue,
       note: type === "join" ? "领取预约已提交，等待确认包邮或自提安排。" : "新提交，等待添加老师微信。",
       behavior,
+      wechatIdentity,
       answers,
       actions: [
         type === "join" ? `领取方式：${deliveryMethod || "未选择"}` : "刚刚提交资料领取",
@@ -2121,6 +2197,30 @@ function applyLeadSubmission(submission) {
   join.submissionId = id;
   lead.submissionId = id;
   lead.shareRef = submission.shareRef;
+  join.phone = lead.phone;
+  join.wechatIdentity = lead.wechatIdentity;
+
+  const existingIndex = findExistingLeadIndex(lead);
+  if (existingIndex >= 0) {
+    const existingLead = state.leads.splice(existingIndex, 1)[0];
+    const mergedLead = {
+      ...existingLead,
+      ...lead,
+      score: Math.max(Number(existingLead.score) || 0, Number(lead.score) || 0),
+      actions: mergeActions(existingLead.actions, [...(lead.actions || []), "重复提交：已更新原客户档案"]),
+      repeatSubmits: (Number(existingLead.repeatSubmits) || 0) + 1
+    };
+    state.leads.unshift(mergedLead);
+
+    const existingJoinIndex = findExistingJoinIndex(existingLead);
+    if (existingJoinIndex >= 0) state.joins.splice(existingJoinIndex, 1);
+    state.joins.unshift({ ...join, id: existingLead.joinId || join.id });
+
+    state.events.repeat_submit = (state.events.repeat_submit || 0) + 1;
+    state.selectedLead = 0;
+    saveState();
+    return getActualJoinCount();
+  }
 
   state.joins.unshift(join);
   state.leads.unshift(lead);
@@ -2138,6 +2238,35 @@ function applyLeadSubmission(submission) {
   state.selectedLead = 0;
   saveState();
   return getActualJoinCount();
+}
+
+function getLeadOpenId(lead = {}) {
+  return lead.wechatIdentity?.openid || lead.behavior?.wechatIdentity?.openid || "";
+}
+
+function findExistingLeadIndex(lead) {
+  const openid = getLeadOpenId(lead);
+  const phone = String(lead.phone || "").trim();
+  if (!openid && !phone) return -1;
+  return state.leads.findIndex((item) => {
+    if (openid && getLeadOpenId(item) === openid) return true;
+    return Boolean(phone && String(item.phone || "").trim() === phone);
+  });
+}
+
+function findExistingJoinIndex(lead) {
+  const openid = getLeadOpenId(lead);
+  const phone = String(lead.phone || "").trim();
+  return state.joins.findIndex((item) => {
+    if (lead.submissionId && item.submissionId === lead.submissionId) return true;
+    if (openid && item.wechatIdentity?.openid === openid) return true;
+    if (phone && String(item.phone || "").trim() === phone) return true;
+    return item.name === lead.name;
+  });
+}
+
+function mergeActions(existing = [], incoming = []) {
+  return [...incoming, ...existing].filter((item, index, array) => item && array.indexOf(item) === index).slice(0, 12);
 }
 
 function bindSuccessPanelButtons() {
@@ -2861,4 +2990,5 @@ function renderAll() {
 hydratePublishedState().finally(() => {
   bindChrome();
   renderAll();
+  ensureWechatAuthorization();
 });

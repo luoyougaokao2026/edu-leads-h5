@@ -462,6 +462,8 @@
                       <span>二维码成功页</span>
                       <span>学校自动匹配</span>
                       <span>顶部分享按钮</span>
+                      <span>微信授权骨架</span>
+                      <span>重复提交合并</span>
                       <span>资料内容编辑</span>
                       <span>近期领取动态</span>
                       <span>访问/停留/点击记录</span>
@@ -479,11 +481,24 @@
 
                   <article class="panel-box manual-card">
                     <div class="section-title">
+                      <h3>微信授权怎么接</h3>
+                      <span>公众号上线前配置</span>
+                    </div>
+                    <ul class="manual-list">
+                      <li>公众号后台配置网页授权域名，例如 quiz.xdianping.cn。</li>
+                      <li>服务器配置 WECHAT_AUTH_ENABLED、WECHAT_APP_ID、WECHAT_APP_SECRET。</li>
+                      <li>授权后后台会记录 openid、昵称、头像和授权时间。</li>
+                      <li>本地测试可在链接后加 ?mock_wechat=1。</li>
+                    </ul>
+                  </article>
+
+                  <article class="panel-box manual-card">
+                    <div class="section-title">
                       <h3>还没有实现</h3>
                       <span>后面要补的功能</span>
                     </div>
                     <ul class="manual-list pending">
-                      <li>真实微信头像需要接微信授权，目前是模拟头像。</li>
+                      <li>真实微信头像需要公众号配置完成后才能拿到，目前可用模拟微信身份测试。</li>
                       <li>文件上传当前存进本地原型数据，正式上线建议接服务器文件存储。</li>
                       <li>后台登录、数据库、小程序版本还没有接入。</li>
                       <li>临时公网只能用于预览，正式传播需要部署到阿里云和正式域名。</li>
