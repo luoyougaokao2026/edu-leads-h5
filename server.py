@@ -446,6 +446,10 @@ class Handler(SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
+    def serve_index(self):
+        self.path = "/index.html"
+        super().do_GET()
+
     def do_GET(self):
         current_route = route(self.path)
         if current_route == "/api/state":
@@ -468,6 +472,9 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if current_route == "/api/wechat/callback":
             self.handle_wechat_callback()
+            return
+        if current_route in ("/parent", "/student", "/admin"):
+            self.serve_index()
             return
         super().do_GET()
 

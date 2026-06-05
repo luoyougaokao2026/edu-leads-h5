@@ -7,30 +7,44 @@ const TEACHER_QR_IMAGE = "./assets/teacher-qr.svg";
 const SYSTEM_AVATAR_COUNT = 60;
 const SYSTEM_AVATAR_BASE_COUNT = 24;
 const SCHOOL_SUGGESTIONS = [
-  "合肥一中",
-  "合肥八中",
+  "合肥市第一中学滨湖校区",
+  "合肥市第一中学瑶海校区",
+  "合肥市第一中学淝河校区",
+  "合肥市第一中学长江路校区",
+  "屯溪一中",
+  "六安一中",
   "合肥滨湖寿春中学",
-  "合肥六中",
-  "合肥一六八中学",
-  "合肥一六八陶冲湖中学",
-  "合肥寿春中学",
-  "合肥七中",
-  "合肥十中",
-  "合肥四中",
-  "合肥九中",
-  "合肥庐阳高级中学",
-  "合肥二中",
-  "合肥三中",
-  "合肥十一中",
-  "合肥新华公学",
-  "合肥世界外国语学校"
+  "合肥市第六中学菱湖校区",
+  "合肥市第六中学百花井校区",
+  "合肥市第六中学新桥校区",
+  "合肥市第八中学匡河校区",
+  "合肥市第八中学运河校区",
+  "合肥一六八中学始信路校区",
+  "合肥市第四中学",
+  "合肥市第五中学长江路校区",
+  "合肥市第七中学",
+  "合肥市第九中学新站校区",
+  "合肥市第九中学四牌楼校区",
+  "合肥市第十中学",
+  "合肥市第二中学",
+  "合肥市第三中学",
+  "合肥市第十一中学",
+  "合肥市第三十二中学",
+  "合肥工业大学附属中学",
+  "合肥市庐阳高级中学"
 ];
 const urlParams = new URLSearchParams(window.location.search);
 const publicVersion = urlParams.get("v") || "";
-const isAdminPreview = urlParams.get("admin") === "1" || urlParams.get("view") === "admin";
+const routePath = window.location.pathname.replace(/\/+$/, "") || "/";
+const isApplyAdminHost = window.location.hostname === "apply-admin.xdianping.cn";
+const isApplyPublicHost = window.location.hostname === "apply.xdianping.cn";
+const isAdminPreview = isApplyAdminHost || routePath === "/admin" || urlParams.get("admin") === "1" || urlParams.get("view") === "admin";
 const isPublicPage =
   !isAdminPreview &&
-  (window.location.hostname.includes("trycloudflare.com") ||
+  (isApplyPublicHost ||
+    routePath === "/parent" ||
+    routePath === "/student" ||
+    window.location.hostname.includes("trycloudflare.com") ||
     publicVersion.includes("clean") ||
     publicVersion.includes("public") ||
     publicVersion.includes("spine"));
@@ -2306,7 +2320,7 @@ function renderInlineSuccessPanel({ shareRef, shareText }) {
         <span>资料已为孩子预留</span>
       </div>
       <div class="success-contact-card">
-        <span class="field-icon field-icon-bell" aria-hidden="true"></span>
+        <span class="success-bell-icon" aria-hidden="true"></span>
         <p>老师会尽快联系您确认领取安排。</p>
       </div>
       <div class="success-divider"><span>或</span></div>
@@ -2447,7 +2461,6 @@ function showInlineDeliveryForm(method) {
   container.innerHTML = renderDeliveryInfoForm(method);
   bindInlineReservationButtons();
   bindInlineReservationForm();
-  container.querySelector("[name='studentName']")?.focus({ preventScroll: true });
 }
 
 function openInlineReservation() {

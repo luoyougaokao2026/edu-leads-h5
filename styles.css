@@ -799,6 +799,10 @@ h1 {
   line-height: 1.55;
 }
 
+.inline-form-head span {
+  white-space: nowrap;
+}
+
 .method-card-list {
   display: grid;
   gap: 12px;
@@ -852,33 +856,64 @@ h1 {
   width: 58px;
   height: 58px;
   border-radius: 12px;
-  background: #edf8f1;
+  background: linear-gradient(135deg, #eef9f2, #e7f6ed);
 }
 
 .method-icon::before {
-  color: #1ba75a;
-  font-size: 28px;
-  font-weight: 900;
+  content: "";
+}
+
+.method-icon-pin {
+  overflow: visible;
 }
 
 .method-icon-pin::before {
-  content: "●";
+  width: 26px;
+  height: 26px;
+  border-radius: 50% 50% 50% 0;
+  background: linear-gradient(145deg, #2bd875, #0b8f48);
+  box-shadow: 0 4px 8px rgba(11, 143, 72, 0.25);
+  transform: rotate(-45deg);
+}
+
+.method-icon-pin::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 3px solid white;
+  border-radius: 50%;
+  background: #c9f4d9;
+  transform: translateY(-3px);
 }
 
 .method-icon-box::before {
-  content: "□";
+  content: "🎁";
+  width: auto;
+  height: auto;
+  background: none;
+  font-size: 32px;
+  line-height: 1;
+  filter: drop-shadow(0 3px 5px rgba(11, 143, 72, 0.18));
 }
 
 .inline-safe-note {
   margin: 0;
+  font-size: 13px;
+  white-space: nowrap;
   text-align: center;
 }
 
 .inline-safe-note::before {
-  content: "◇";
+  content: "";
+  display: inline-block;
+  width: 17px;
+  height: 17px;
   margin-right: 6px;
-  color: #22a864;
-  font-weight: 900;
+  vertical-align: -3px;
+  background: #22a864;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 18 18' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M9 1.6 15 4v4.2c0 3.8-2.5 6.8-6 8.2-3.5-1.4-6-4.4-6-8.2V4l6-2.4Zm3.3 5.4-4 4-1.9-1.9-1.1 1.1 3 3 5.1-5.1L12.3 7Z' fill='black'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg width='18' height='18' viewBox='0 0 18 18' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M9 1.6 15 4v4.2c0 3.8-2.5 6.8-6 8.2-3.5-1.4-6-4.4-6-8.2V4l6-2.4Zm3.3 5.4-4 4-1.9-1.9-1.1 1.1 3 3 5.1-5.1L12.3 7Z' fill='black'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 .inline-form-head {
@@ -917,7 +952,7 @@ h1 {
 
 .input-shell input,
 .input-shell textarea {
-  padding-left: 44px;
+  padding-left: 54px;
   min-height: 48px;
   border-radius: 7px;
   background: white;
@@ -943,43 +978,48 @@ h1 {
   z-index: 1;
   display: inline-grid;
   place-items: center;
-  width: 18px;
-  height: 18px;
-  color: #a2aaa6;
-  font-size: 16px;
-  line-height: 1;
+  width: 20px;
+  height: 20px;
+  color: #a6aeb3;
+  filter: drop-shadow(0 1px 1px rgba(20, 40, 32, 0.08));
 }
 
 .textarea-shell .field-icon {
   top: 15px;
 }
 
-.field-icon-user::before {
-  content: "○";
+.field-icon::before {
+  content: "";
+  display: block;
+  width: 20px;
+  height: 20px;
+  background: currentColor;
+  -webkit-mask: var(--field-icon) center / contain no-repeat;
+  mask: var(--field-icon) center / contain no-repeat;
 }
 
-.field-icon-school::before {
-  content: "▥";
+.field-icon-user {
+  --field-icon: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' fill-rule='evenodd' d='M10 2.5a4 4 0 1 0 0 8 4 4 0 0 0 0-8ZM7.4 6.5a2.6 2.6 0 1 1 5.2 0 2.6 2.6 0 0 1-5.2 0ZM4.2 16.7c.6-2.8 2.8-4.4 5.8-4.4s5.2 1.6 5.8 4.4c.1.5-.3.9-.8.9H5c-.5 0-.9-.4-.8-.9Zm1.8-.5h8c-.6-1.6-2-2.5-4-2.5s-3.4.9-4 2.5Z'/%3E%3C/svg%3E");
 }
 
-.field-icon-phone::before {
-  content: "⌕";
+.field-icon-school {
+  --field-icon: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' fill-rule='evenodd' d='M10 2 3.4 5.1v2H5v8.1H3.6v1.6h12.8v-1.6H15V7.1h1.6v-2L10 2Zm-4.4 4 4.4-2 4.4 2H5.6Zm1.1 1.1v8.1h2.2v-2.8h2.2v2.8h2.2V7.1H6.7Zm1.5 2.2h1.2v1.2H8.2V9.3Zm3.2 0h1.2v1.2h-1.2V9.3Z'/%3E%3C/svg%3E");
 }
 
-.field-icon-location::before {
-  content: "◎";
+.field-icon-phone {
+  --field-icon: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M5.4 3.1c.5-.4 1.2-.4 1.6.1l1.4 1.7c.4.5.4 1.2 0 1.6l-.9 1c.7 1.4 1.8 2.5 3.1 3.2l1.1-.9c.5-.4 1.2-.4 1.6 0l1.7 1.4c.5.4.6 1.1.2 1.6l-.8 1.2c-.5.7-1.3 1-2.1.8-4.3-.8-7.8-4.2-8.7-8.6-.2-.8.1-1.6.8-2.1l1-.7Zm.9 1.2-1 .7c-.2.2-.3.5-.3.8.8 3.8 3.8 6.8 7.6 7.6.3.1.6-.1.8-.3l.7-1-1.5-1.2-1.2 1c-.3.3-.7.3-1.1.2-1.9-.8-3.4-2.3-4.2-4.2-.2-.4-.1-.8.2-1.1l1-1.2-1-1.3Z'/%3E%3C/svg%3E");
 }
 
-.field-icon-bell::before {
-  content: "◌";
-  color: #18a955;
+.field-icon-location {
+  --field-icon: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' fill-rule='evenodd' d='M10 2.3a6 6 0 0 0-6 6c0 4.5 5.1 8.9 5.4 9.1.3.3.8.3 1.2 0 .3-.2 5.4-4.6 5.4-9.1a6 6 0 0 0-6-6Zm0 13.4c-1.4-1.4-4.4-4.6-4.4-7.4a4.4 4.4 0 1 1 8.8 0c0 2.8-3 6-4.4 7.4Zm0-9.9a2.4 2.4 0 1 0 0 4.8 2.4 2.4 0 0 0 0-4.8Zm0 1.5a.9.9 0 1 1 0 1.8.9.9 0 0 1 0-1.8Z'/%3E%3C/svg%3E");
 }
 
 .school-suggestions {
-  position: absolute;
+  position: static;
   right: 0;
   left: 0;
   z-index: 40;
+  margin-top: -1px;
   overflow: hidden;
   border: 1px solid #dfe5e1;
   border-radius: 0 0 8px 8px;
@@ -992,7 +1032,7 @@ h1 {
   gap: 10px;
   align-items: center;
   width: 100%;
-  padding: 13px 14px 13px 46px;
+  padding: 13px 14px 13px 24px;
   color: #1f2b25;
   background: white;
   text-align: left;
@@ -1001,7 +1041,12 @@ h1 {
 
 .school-suggestions .field-icon {
   position: static;
-  color: #1ba75a;
+  flex: 0 0 auto;
+  color: #19a961;
+}
+
+.school-suggestions .field-icon-school {
+  --field-icon: url("data:image/svg+xml,%3Csvg width='20' height='20' viewBox='0 0 20 20' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath fill='black' d='M10 3 2.5 6.5 10 10l6-2.8v4.5h1.5V6.5L10 3Zm-4.2 6.6v2.2c0 1.6 1.8 3.1 4.2 3.1s4.2-1.5 4.2-3.1V9.6L10 11.5 5.8 9.6Z'/%3E%3C/svg%3E");
 }
 
 .char-count {
@@ -1145,13 +1190,35 @@ h1 {
 .success-contact-card {
   width: 84%;
   min-height: 54px;
+  grid-template-columns: 26px 1fr;
+  gap: 10px;
+  justify-items: start;
+  padding: 12px 18px;
   text-align: left;
+}
+
+.success-bell-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: #19a85a;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.success-bell-icon::before {
+  content: "♧";
+  transform: rotate(180deg);
 }
 
 .success-contact-card p {
   margin: 0;
   color: #48524d;
   font-size: 14px;
+  line-height: 1.5;
+  word-break: keep-all;
 }
 
 .success-divider {
@@ -3199,6 +3266,11 @@ tbody tr.is-selected {
   border-radius: 8px;
   padding: 12px;
   background: #fbfdfb;
+}
+
+.form-stack .input-shell input,
+.form-stack .input-shell textarea {
+  padding-left: 54px;
 }
 
 .resource-preview {
