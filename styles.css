@@ -2662,6 +2662,53 @@ tbody tr.is-selected {
   font-weight: 800;
 }
 
+.crm-customer-cell {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 9px;
+  align-items: center;
+  min-width: 138px;
+}
+
+.crm-avatar,
+.crm-avatar img,
+.crm-avatar span {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+}
+
+.crm-avatar {
+  display: block;
+  overflow: hidden;
+  background: #eef8f1;
+}
+
+.crm-avatar img {
+  display: block;
+  object-fit: cover;
+}
+
+.crm-avatar span {
+  display: grid;
+  place-items: center;
+  color: white;
+  background: var(--green);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.crm-customer-cell b,
+.crm-customer-cell small {
+  display: block;
+}
+
+.crm-customer-cell small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .lead-detail {
   min-height: 320px;
   padding: 16px;

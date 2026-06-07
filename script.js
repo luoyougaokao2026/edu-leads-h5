@@ -4,6 +4,7 @@ const WECHAT_IDENTITY_KEY = "zhaosheng_wechat_identity_v1";
 const DEFAULT_COVER_IMAGE = "./assets/daoshu-preview-cover.png";
 const LEGACY_COVER_IMAGES = ["./assets/luoyou-daoshu-cover.jpg"];
 const TEACHER_QR_IMAGE = "./assets/teacher-qr.svg";
+const PUBLIC_BASE_URL = "https://apply.xdianping.cn/zhaosheng";
 const SYSTEM_AVATAR_COUNT = 60;
 const SYSTEM_AVATAR_BASE_COUNT = 24;
 const SCHOOL_SUGGESTIONS = [
@@ -42,6 +43,7 @@ const isAdminPreview = isApplyAdminHost || routePath === "/admin" || urlParams.g
 const isPublicPage =
   !isAdminPreview &&
   (isApplyPublicHost ||
+    routePath === "/zhaosheng" ||
     routePath === "/parent" ||
     routePath === "/student" ||
     window.location.hostname.includes("trycloudflare.com") ||
@@ -286,7 +288,8 @@ let joinAutoScrollTimer = null;
 let joinAutoScrollPaused = false;
 let joinAutoScrollResumeTimer = null;
 let joinAutoScrollInternal = false;
-let activeLeadFilter = "全部";
+let activeLeadFilter = "全部访客";
+let selectedCrmEntryKey = "";
 let latestPublishedAt = "";
 
 function loadState() {
@@ -310,6 +313,12 @@ function saveWechatIdentity(identity) {
   if (!identity?.openid) return;
   wechatIdentity = identity;
   localStorage.setItem(WECHAT_IDENTITY_KEY, JSON.stringify(identity));
+  if (typeof state !== "undefined") {
+    const behavior = ensureVisitorBehavior();
+    behavior.wechatIdentity = identity;
+    behavior.lastSeen = formatDateTime(new Date());
+    saveState();
+  }
 }
 
 function isWeChatBrowser() {
@@ -699,7 +708,8 @@ function publicJoinMeta(item) {
 }
 
 function renderAvatar(item) {
-  const avatarUrl = item.avatarUrl || getSystemAvatarUrl(`${item.name}-${item.id || item.source || ""}`);
+  const identity = item.wechatIdentity || item.behavior?.wechatIdentity || {};
+  const avatarUrl = identity.avatarUrl || item.avatarUrl || getSystemAvatarUrl(`${item.name}-${item.id || item.source || ""}`);
   if (avatarUrl) return `<span class="avatar avatar-photo"><img src="${avatarUrl}" alt="${maskName(item.name)}家长头像" /></span>`;
   const label = item.avatar || item.name?.[0] || "家";
   const color = item.avatarColor || stringToColor(item.name || label);
@@ -807,9 +817,11 @@ function ensureVisitorBehavior() {
       maxSeconds: 0,
       clicks: 0,
       lastSource: "自然访问",
-      lastSeen: ""
+      lastSeen: "",
+      wechatIdentity: wechatIdentity || null
     };
   }
+  if (wechatIdentity?.openid) state.visitors[visitSession.id].wechatIdentity = wechatIdentity;
   return state.visitors[visitSession.id];
 }
 
@@ -834,6 +846,7 @@ function syncVisitorBehavior() {
   behavior.maxSeconds = Math.max(behavior.maxSeconds, behavior.currentSeconds);
   behavior.lastSource = resolveSourceLabel(state.currentSource);
   behavior.lastSeen = formatDateTime(new Date(now));
+  if (wechatIdentity?.openid) behavior.wechatIdentity = wechatIdentity;
   visitSession.lastSyncedAt = now;
   saveState();
   return behavior;
@@ -1142,19 +1155,22 @@ function renderFollowReminders() {
 
 function renderLeadRows() {
   const entries = getFilteredLeadEntries();
-  if (entries.length && !entries.some(({ index }) => index === state.selectedLead)) state.selectedLead = entries[0].index;
+  if (!entries.length) selectedCrmEntryKey = "";
+  if (entries.length && !entries.some(({ key }) => key === selectedCrmEntryKey)) selectedCrmEntryKey = entries[0].key;
+  const selectedEntry = entries.find(({ key }) => key === selectedCrmEntryKey);
+  if (selectedEntry?.kind === "lead") state.selectedLead = selectedEntry.index;
   document.querySelector("#leadRows").innerHTML = entries.length
     ? entries
         .map(
-          (lead) => `
-            <tr data-lead-index="${lead.index}" class="${lead.index === state.selectedLead ? "is-selected" : ""}">
-              <td>${lead.item.name}<br><small>${lead.item.phone}</small></td>
-              <td>${lead.item.grade}</td>
-              <td>${lead.item.subject}</td>
-              <td>${lead.item.school || lead.item.answers?.school || lead.item.answers?.["所在学校"] || "未填写"}</td>
-              <td>${lead.item.source}</td>
-              <td><span class="score">${lead.item.score}</span></td>
-              <td><span class="status">${lead.item.status}</span></td>
+          (entry) => `
+            <tr data-crm-entry-key="${entry.key}" class="${entry.key === selectedCrmEntryKey ? "is-selected" : ""}">
+              <td>${renderCrmCustomerCell(entry)}</td>
+              <td>${entry.grade}</td>
+              <td>${entry.subject}</td>
+              <td>${entry.school}</td>
+              <td>${entry.source}</td>
+              <td><span class="score">${entry.score}</span></td>
+              <td><span class="status">${entry.status}</span></td>
             </tr>
           `
         )
@@ -1165,18 +1181,129 @@ function renderLeadRows() {
 function setLeadFilter(filter) {
   activeLeadFilter = filter;
   document.querySelectorAll("[data-lead-filter]").forEach((item) => item.classList.toggle("is-selected", item.dataset.leadFilter === filter));
+  selectedCrmEntryKey = "";
   renderLeadRows();
   renderLeadDetail();
 }
 
 function getFilteredLeadEntries() {
-  return state.leads
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => activeLeadFilter === "全部" || item.status === activeLeadFilter);
+  return getCrmEntries().filter((entry) => {
+    if (activeLeadFilter === "全部访客") return true;
+    if (activeLeadFilter === "已微信授权") return Boolean(entry.wechatIdentity?.openid);
+    if (activeLeadFilter === "已提交预约") return entry.kind === "lead";
+    if (activeLeadFilter === "已接龙") return entry.hasJoin;
+    return entry.status === activeLeadFilter;
+  });
+}
+
+function getRecordWechatIdentity(item = {}) {
+  return item.wechatIdentity || item.behavior?.wechatIdentity || null;
+}
+
+function getLeadOpenid(lead = {}) {
+  return getRecordWechatIdentity(lead)?.openid || "";
+}
+
+function leadHasJoin(lead) {
+  const openid = getLeadOpenid(lead);
+  return state.joins.some((item) => {
+    if (lead.submissionId && item.submissionId === lead.submissionId) return true;
+    if (openid && item.wechatIdentity?.openid === openid) return true;
+    if (lead.phone && item.phone === lead.phone) return true;
+    return item.name === lead.name;
+  });
+}
+
+function getCrmEntries() {
+  const leadEntries = state.leads.map((lead, index) => {
+    const wechat = getRecordWechatIdentity(lead);
+    return {
+      key: `lead:${index}`,
+      kind: "lead",
+      index,
+      item: lead,
+      name: lead.name,
+      phone: lead.phone || "未填写",
+      grade: lead.grade || "高三",
+      subject: lead.subject || "数学",
+      school: lead.school || lead.answers?.school || lead.answers?.["所在学校"] || "未填写",
+      source: lead.source || "自然访问",
+      score: lead.score || 0,
+      status: lead.status || "正式线索",
+      wechatIdentity: wechat,
+      behavior: lead.behavior || {},
+      hasJoin: leadHasJoin(lead)
+    };
+  });
+
+  const leadOpenids = new Set(leadEntries.map((entry) => entry.wechatIdentity?.openid).filter(Boolean));
+  const leadVisitorIds = new Set(state.leads.map((lead) => lead.visitorId).filter(Boolean));
+  const visitorEntries = Object.values(state.visitors || {})
+    .filter((visitor) => {
+      const openid = visitor.wechatIdentity?.openid;
+      if (openid && leadOpenids.has(openid)) return false;
+      if (visitor.id && leadVisitorIds.has(visitor.id)) return false;
+      return true;
+    })
+    .map((visitor) => {
+      const wechat = visitor.wechatIdentity || null;
+      return {
+        key: `visitor:${visitor.id}`,
+        kind: "visitor",
+        item: visitor,
+        name: wechat?.nickname || "访客",
+        phone: "未提交",
+        grade: "-",
+        subject: "-",
+        school: "未填写",
+        source: visitor.lastSource || "自然访问",
+        score: scoreBehaviorIntent(visitor),
+        status: wechat?.openid ? "微信授权访客" : "普通访客",
+        wechatIdentity: wechat,
+        behavior: visitor,
+        hasJoin: false
+      };
+    });
+
+  return [...leadEntries, ...visitorEntries].sort((a, b) => {
+    if (a.kind !== b.kind) return a.kind === "lead" ? -1 : 1;
+    return String(b.behavior?.lastSeen || "").localeCompare(String(a.behavior?.lastSeen || ""));
+  });
+}
+
+function renderCrmCustomerCell(entry) {
+  const wechat = entry.wechatIdentity;
+  const avatar = wechat?.avatarUrl
+    ? `<img src="${wechat.avatarUrl}" alt="${wechat.nickname || "微信头像"}" />`
+    : `<span>${(entry.name || "访")[0]}</span>`;
+  return `
+    <div class="crm-customer-cell">
+      <span class="crm-avatar">${avatar}</span>
+      <div>
+        <b>${entry.name}</b>
+        <small>${entry.kind === "lead" ? entry.phone : "微信授权访客"}</small>
+        ${
+          wechat?.openid
+            ? `<small>微信：${wechat.nickname || "已授权"} · ${maskOpenId(wechat.openid)}</small><small>授权：${wechat.authorizedAt || "已记录"}</small>`
+            : `<small>未授权微信</small>`
+        }
+      </div>
+    </div>
+  `;
 }
 
 function renderLeadDetail() {
-  const lead = state.leads[state.selectedLead];
+  const visibleEntries = getFilteredLeadEntries();
+  const entry = visibleEntries.find((item) => item.key === selectedCrmEntryKey) || visibleEntries[0];
+  if (!entry) {
+    document.querySelector("#leadDetail").innerHTML = `<p class="empty-hint">暂无客户或访客数据。</p>`;
+    return;
+  }
+  if (entry.kind === "visitor") {
+    renderVisitorDetail(entry);
+    return;
+  }
+  const lead = entry.item;
   const referral = state.channels.find((channel) => channel.type === "家长分享" && channel.name.startsWith(lead.name));
   const behavior = lead.behavior || {};
   const leadWechat = lead.wechatIdentity || behavior.wechatIdentity || null;
@@ -1266,6 +1393,52 @@ function renderLeadDetail() {
   `;
 }
 
+function renderVisitorDetail(entry) {
+  const visitor = entry.item || {};
+  const behavior = entry.behavior || visitor;
+  const wechat = entry.wechatIdentity || null;
+  document.querySelector("#leadDetail").innerHTML = `
+    <div class="brand-mark">
+      <span>${wechat?.nickname?.[0] || "访"}</span>
+      <div>
+        <strong>${wechat?.nickname || "微信授权访客"}</strong>
+        <small>${entry.status} · 尚未提交预约</small>
+      </div>
+    </div>
+    <div class="behavior-box">
+      <strong>微信身份</strong>
+      ${
+        wechat?.openid
+          ? `<div class="wechat-identity-card">
+              ${wechat.avatarUrl ? `<img src="${wechat.avatarUrl}" alt="${wechat.nickname || "微信头像"}" />` : `<span>${wechat.nickname?.[0] || "微"}</span>`}
+              <div>
+                <b>${wechat.nickname || "已授权家长"}</b>
+                <small>openid：${maskOpenId(wechat.openid)}</small>
+                <small>授权时间：${wechat.authorizedAt || "已记录"}</small>
+              </div>
+            </div>`
+          : `<p class="empty-hint">未授权微信身份。</p>`
+      }
+    </div>
+    <div class="behavior-box">
+      <strong>页面行为</strong>
+      <div class="detail-kv">
+        <div><span>访客 ID</span><strong>${visitor.id || "未记录"}</strong></div>
+        <div><span>进入次数</span><strong>${behavior.visits || "未记录"}</strong></div>
+        <div><span>本次停留</span><strong>${behavior.currentSeconds ? formatDuration(behavior.currentSeconds) : "未记录"}</strong></div>
+        <div><span>累计停留</span><strong>${behavior.totalSeconds ? formatDuration(behavior.totalSeconds) : "未记录"}</strong></div>
+        <div><span>页面点击</span><strong>${behavior.clicks || 0}</strong></div>
+        <div><span>最后访问</span><strong>${behavior.lastSeen || "未记录"}</strong></div>
+        <div><span>来源</span><strong>${behavior.lastSource || "自然访问"}</strong></div>
+      </div>
+    </div>
+    <div class="behavior-box">
+      <strong>数据类型</strong>
+      <p class="empty-hint">这是微信授权访客，只记录 openid、微信昵称、头像和访问行为。家长提交预约后，会升级为正式线索。</p>
+    </div>
+  `;
+}
+
 function renderLeadAnswers(lead) {
   if (!lead.answers) return `<div><span>暂无自定义字段</span><strong>未记录</strong></div>`;
   const configured = state.fields
@@ -1305,7 +1478,7 @@ function renderChannels() {
               <strong>${channel.name}</strong>
               <span>${channel.type}</span>
             </div>
-            <code>https://quiz.xdianping.cn/zhaosheng?source=${channel.source}</code>
+            <code>${PUBLIC_BASE_URL}?source=${channel.source}</code>
             <div class="source-leads">
               ${channel.leads.map((lead) => `<span>${lead}</span>`).join("")}
             </div>
@@ -1711,7 +1884,7 @@ function renderReferrals() {
               <strong>${sharer}</strong>
               <span>${channel.source}</span>
             </div>
-            <code>https://quiz.xdianping.cn/zhaosheng?ref=${channel.source}</code>
+            <code>${PUBLIC_BASE_URL}?ref=${channel.source}</code>
             <div class="referred-leads">
               ${renderReferredLeadDetails(channel.leads)}
             </div>
@@ -2635,12 +2808,12 @@ function bindDrawerButtons(type) {
           <p>${name} 已加入传播统计。</p>
           <div class="group-guide">
             <strong>渠道链接</strong>
-            <span class="link-text">https://quiz.xdianping.cn/zhaosheng?source=${source}</span>
+            <span class="link-text">${PUBLIC_BASE_URL}?source=${source}</span>
             <small>把这个链接发给对应老师、群或平台，后台会按来源统计。</small>
           </div>
         </div>
         <div class="submit-row">
-          <button type="button" data-copy-channel="https://quiz.xdianping.cn/zhaosheng?source=${source}">复制链接</button>
+          <button type="button" data-copy-channel="${PUBLIC_BASE_URL}?source=${source}">复制链接</button>
           <button type="button" data-close-drawer>完成</button>
         </div>
       `;
@@ -2784,15 +2957,19 @@ function bindChrome() {
 
     if (event.target.closest("[data-close-drawer]")) closeDrawer();
 
-    const leadRow = event.target.closest("[data-lead-index]");
+    const leadRow = event.target.closest("[data-crm-entry-key]");
     if (leadRow) {
-      state.selectedLead = Number(leadRow.dataset.leadIndex);
+      selectedCrmEntryKey = leadRow.dataset.crmEntryKey;
+      const entry = getCrmEntries().find((item) => item.key === selectedCrmEntryKey);
+      if (entry?.kind === "lead") state.selectedLead = entry.index;
       renderLeadRows();
       renderLeadDetail();
     }
 
     if (event.target.closest("#saveLeadFollow")) {
-      const lead = state.leads[state.selectedLead];
+      const entry = getCrmEntries().find((item) => item.key === selectedCrmEntryKey);
+      if (!entry || entry.kind !== "lead") return;
+      const lead = entry.item;
       const status = document.querySelector("#leadStatusSelect").value;
       const note = document.querySelector("#leadNoteInput").value.trim();
       lead.status = status;
@@ -2811,8 +2988,9 @@ function bindChrome() {
     const focusLead = event.target.closest("[data-focus-lead]");
     if (focusLead) {
       state.selectedLead = Number(focusLead.dataset.focusLead);
-      activeLeadFilter = "全部";
-      document.querySelectorAll("[data-lead-filter]").forEach((item) => item.classList.toggle("is-selected", item.dataset.leadFilter === "全部"));
+      selectedCrmEntryKey = `lead:${state.selectedLead}`;
+      activeLeadFilter = "全部访客";
+      document.querySelectorAll("[data-lead-filter]").forEach((item) => item.classList.toggle("is-selected", item.dataset.leadFilter === "全部访客"));
       document.querySelectorAll(".admin-nav").forEach((item) => item.classList.remove("is-active"));
       document.querySelectorAll(".admin-panel").forEach((item) => item.classList.remove("is-active"));
       document.querySelector('[data-admin-tab="leads"]').classList.add("is-active");

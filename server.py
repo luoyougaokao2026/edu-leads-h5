@@ -12,6 +12,8 @@ from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parent
 STATE_FILE = ROOT / "data" / "published-state.json"
+SERVER_HOST = os.environ.get("HOST", "127.0.0.1").strip() or "127.0.0.1"
+SERVER_PORT = int(os.environ.get("PORT", "4173").strip() or "4173")
 STATE_LOCK = RLock()
 SYSTEM_AVATAR_COUNT = 60
 SYSTEM_AVATAR_BASE_COUNT = 24
@@ -71,7 +73,7 @@ def build_oauth_url(redirect_url):
 
 def request_origin(handler):
     scheme = "https" if handler.headers.get("X-Forwarded-Proto") == "https" else "http"
-    host = handler.headers.get("Host", "127.0.0.1:4173")
+    host = handler.headers.get("Host", f"127.0.0.1:{SERVER_PORT}")
     return f"{scheme}://{host}"
 
 
@@ -473,7 +475,7 @@ class Handler(SimpleHTTPRequestHandler):
         if current_route == "/api/wechat/callback":
             self.handle_wechat_callback()
             return
-        if current_route in ("/parent", "/student", "/admin"):
+        if current_route in ("/parent", "/student", "/admin", "/zhaosheng"):
             self.serve_index()
             return
         super().do_GET()
@@ -572,6 +574,6 @@ window.location.replace({safe_redirect});
 
 
 if __name__ == "__main__":
-    server = ThreadingHTTPServer(("127.0.0.1", 4173), Handler)
-    print("Serving with publish API at http://127.0.0.1:4173")
+    server = ThreadingHTTPServer((SERVER_HOST, SERVER_PORT), Handler)
+    print(f"Serving with publish API at http://{SERVER_HOST}:{SERVER_PORT}")
     server.serve_forever()
