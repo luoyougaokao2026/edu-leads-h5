@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
 import copy
+import hashlib
 import json
 import os
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+import time
+try:
+    from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+except ImportError:
+    from http.server import SimpleHTTPRequestHandler, HTTPServer
+    ThreadingHTTPServer = HTTPServer
 from pathlib import Path
 from threading import RLock
 from time import localtime, strftime
@@ -20,6 +26,8 @@ SYSTEM_AVATAR_BASE_COUNT = 24
 WECHAT_APP_ID = os.environ.get("WECHAT_APP_ID", "").strip()
 WECHAT_APP_SECRET = os.environ.get("WECHAT_APP_SECRET", "").strip()
 WECHAT_AUTH_ENABLED = os.environ.get("WECHAT_AUTH_ENABLED", "").strip() == "1"
+WECHAT_TOKEN_CACHE = {"value": "", "expires_at": 0}
+WECHAT_TICKET_CACHE = {"value": "", "expires_at": 0}
 
 
 def route(path):
@@ -56,6 +64,75 @@ def public_wechat_config():
         "scope": os.environ.get("WECHAT_OAUTH_SCOPE", "snsapi_userinfo").strip() or "snsapi_userinfo",
         "configured": bool(WECHAT_APP_ID and WECHAT_APP_SECRET),
         "callbackPath": "/api/wechat/callback"
+    }
+
+
+def fetch_wechat_json(url):
+    with urlopen(url, timeout=8) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    if payload.get("errcode"):
+        raise ValueError(payload.get("errmsg") or "wechat request failed")
+    return payload
+
+
+def get_wechat_access_token():
+    now = time.time()
+    if WECHAT_TOKEN_CACHE["value"] and WECHAT_TOKEN_CACHE["expires_at"] > now + 60:
+        return WECHAT_TOKEN_CACHE["value"]
+    if not WECHAT_APP_ID or not WECHAT_APP_SECRET:
+        raise ValueError("wechat app id or secret missing")
+    token_url = (
+        "https://api.weixin.qq.com/cgi-bin/token?"
+        + urlencode({
+            "grant_type": "client_credential",
+            "appid": WECHAT_APP_ID,
+            "secret": WECHAT_APP_SECRET
+        })
+    )
+    payload = fetch_wechat_json(token_url)
+    token = payload.get("access_token")
+    if not token:
+        raise ValueError("wechat access token missing")
+    WECHAT_TOKEN_CACHE["value"] = token
+    WECHAT_TOKEN_CACHE["expires_at"] = now + int(payload.get("expires_in") or 7200) - 120
+    return token
+
+
+def get_wechat_jsapi_ticket():
+    now = time.time()
+    if WECHAT_TICKET_CACHE["value"] and WECHAT_TICKET_CACHE["expires_at"] > now + 60:
+        return WECHAT_TICKET_CACHE["value"]
+    token = get_wechat_access_token()
+    ticket_url = (
+        "https://api.weixin.qq.com/cgi-bin/ticket/getticket?"
+        + urlencode({
+            "access_token": token,
+            "type": "jsapi"
+        })
+    )
+    payload = fetch_wechat_json(ticket_url)
+    ticket = payload.get("ticket")
+    if not ticket:
+        raise ValueError("wechat jsapi ticket missing")
+    WECHAT_TICKET_CACHE["value"] = ticket
+    WECHAT_TICKET_CACHE["expires_at"] = now + int(payload.get("expires_in") or 7200) - 120
+    return ticket
+
+
+def build_wechat_js_config(page_url):
+    if not public_wechat_config()["enabled"]:
+        raise ValueError("wechat auth disabled")
+    ticket = get_wechat_jsapi_ticket()
+    nonce = hashlib.sha1(os.urandom(16)).hexdigest()[:16]
+    timestamp = str(int(time.time()))
+    raw = f"jsapi_ticket={ticket}&noncestr={nonce}&timestamp={timestamp}&url={page_url}"
+    signature = hashlib.sha1(raw.encode("utf-8")).hexdigest()
+    return {
+        "ok": True,
+        "appId": WECHAT_APP_ID,
+        "timestamp": timestamp,
+        "nonceStr": nonce,
+        "signature": signature
     }
 
 
@@ -471,6 +548,17 @@ class Handler(SimpleHTTPRequestHandler):
                 return
             callback_url = f"{request_origin(self)}/api/wechat/callback?redirect={quote(redirect, safe='')}"
             self.send_json({"ok": True, "url": build_oauth_url(callback_url)})
+            return
+        if current_route == "/api/wechat/js-config":
+            query = parse_qs(urlparse(self.path).query)
+            page_url = query.get("url", [""])[0].split("#")[0]
+            if not page_url:
+                self.send_json({"ok": False, "error": "missing url"}, status=400)
+                return
+            try:
+                self.send_json(build_wechat_js_config(page_url))
+            except Exception as exc:
+                self.send_json({"ok": False, "error": str(exc)}, status=400)
             return
         if current_route == "/api/wechat/callback":
             self.handle_wechat_callback()

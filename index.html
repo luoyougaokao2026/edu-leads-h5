@@ -3,16 +3,23 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>教培招生互动获客系统原型</title>
+    <title>高三导数50题精讲资料领取</title>
     <meta
       name="description"
-      content="教培招生 H5、资料领取、进群接龙、学习诊断、渠道统计和客户跟进后台原型"
+      content="领取题册和讲解视频，适合高三二轮查漏补缺。"
     />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="高三导数50题精讲资料领取" />
+    <meta property="og:description" content="领取题册和讲解视频，适合高三二轮查漏补缺。" />
+    <meta property="og:image" content="https://apply.xdianping.cn/assets/daoshu-preview-cover.png" />
+    <meta property="og:url" content="https://apply.xdianping.cn/zhaosheng" />
+    <meta name="twitter:card" content="summary_large_image" />
     <script>
       if (window.location.protocol === "file:") {
         window.location.replace(`http://127.0.0.1:4173/${window.location.search || ""}${window.location.hash || ""}`);
       }
     </script>
+    <script src="https://res.wx.qq.com/open/js/jweixin-1.6.0.js"></script>
     <link rel="stylesheet" href="./styles.css?v=20260604-restored-followup" />
   </head>
   <body>
@@ -215,6 +222,34 @@
                         进群口令
                         <input data-edit-activity="passphrase" value="导数资料" />
                       </label>
+                      <label>
+                        成功页标题
+                        <input data-edit-activity="successTitle" value="领取预约已提交" />
+                      </label>
+                      <label>
+                        成功页副标题
+                        <input data-edit-activity="successSubtitle" value="资料已为孩子预留" />
+                      </label>
+                      <label class="wide">
+                        成功页联系提示
+                        <input data-edit-activity="successContactText" value="老师会尽快联系您确认领取安排。" />
+                      </label>
+                      <label>
+                        二维码标题
+                        <input data-edit-activity="qrTitle" value="长按二维码添加老师" />
+                      </label>
+                      <label>
+                        二维码说明
+                        <input data-edit-activity="qrSubtitle" value="领取题册和讲解视频" />
+                      </label>
+                      <label class="wide">
+                        老师二维码图片
+                        <input type="file" data-upload-activity-image="teacherQrImage" accept="image/*" />
+                        <small>上传老师或企业微信二维码，成功页会自动显示。</small>
+                      </label>
+                      <div class="wide upload-status" data-activity-qr-status>
+                        <span>未上传时使用系统默认二维码。</span>
+                      </div>
                       <label class="wide">
                         表单提示语
                         <textarea data-edit-activity="formHint" rows="2">为给孩子预留资料，请填写领取信息。</textarea>
@@ -225,6 +260,18 @@
                       <label class="wide">
                         分享引导语
                         <textarea data-edit-activity="shareLead" rows="3">如果身边有同样需要导数资料的高三家长，可以顺手转给他。</textarea>
+                      </label>
+                      <label>
+                        分享标题
+                        <input data-edit-activity="shareTitle" value="高三导数50题精讲资料领取" />
+                      </label>
+                      <label>
+                        分享封面图地址
+                        <input data-edit-activity="shareImage" value="https://apply.xdianping.cn/assets/daoshu-preview-cover.png" />
+                      </label>
+                      <label class="wide">
+                        分享描述
+                        <textarea data-edit-activity="shareDescription" rows="2">领取题册和讲解视频，适合高三二轮查漏补缺。</textarea>
                       </label>
                     </div>
                   </article>

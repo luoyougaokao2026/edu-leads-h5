@@ -78,7 +78,17 @@ const defaultState = {
     formHint: "为给孩子预留资料，请填写领取信息。",
     teacherWechat: "math-guide-2026",
     passphrase: "导数资料",
+    successTitle: "领取预约已提交",
+    successSubtitle: "资料已为孩子预留",
+    successContactText: "老师会尽快联系您确认领取安排。",
+    qrTitle: "长按二维码添加老师",
+    qrSubtitle: "领取题册和讲解视频",
+    teacherQrImage: "",
+    teacherQrFileName: "",
     shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
+    shareTitle: "高三导数50题精讲资料领取",
+    shareDescription: "领取题册和讲解视频，适合高三二轮查漏补缺。",
+    shareImage: "https://apply.xdianping.cn/assets/daoshu-preview-cover.png",
     audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
   },
   followStatuses: ["新领取", "已加微信", "已进群", "已发资料", "已互动", "有训练营意向", "已报名", "无效"],
@@ -319,6 +329,7 @@ function saveWechatIdentity(identity) {
     behavior.lastSeen = formatDateTime(new Date());
     saveState();
   }
+  configureWechatShareCard();
 }
 
 function isWeChatBrowser() {
@@ -344,6 +355,41 @@ async function ensureWechatAuthorization() {
   if (!config?.enabled) return;
   const authUrl = await postJsonSafeGet(`/api/wechat/oauth-url?redirect=${encodeURIComponent(window.location.href)}`);
   if (authUrl?.url) window.location.replace(authUrl.url);
+}
+
+async function configureWechatShareCard() {
+  updateShareMeta();
+  if (!isPublicPage || !isWeChatBrowser() || !window.wx) return;
+  const payload = getSharePayload("page");
+  const imgUrl = getShareImageUrl();
+  const pageUrl = window.location.href.split("#")[0];
+  const config = await postJsonSafeGet(`/api/wechat/js-config?url=${encodeURIComponent(pageUrl)}`);
+  if (!config?.ok) return;
+  window.wx.config({
+    debug: false,
+    appId: config.appId,
+    timestamp: config.timestamp,
+    nonceStr: config.nonceStr,
+    signature: config.signature,
+    jsApiList: ["updateAppMessageShareData", "updateTimelineShareData", "onMenuShareAppMessage", "onMenuShareTimeline"]
+  });
+  window.wx.ready(() => {
+    const friendPayload = {
+      title: payload.title,
+      desc: payload.text,
+      link: payload.url,
+      imgUrl
+    };
+    const timelinePayload = {
+      title: payload.title,
+      link: payload.url,
+      imgUrl
+    };
+    if (window.wx.updateAppMessageShareData) window.wx.updateAppMessageShareData(friendPayload);
+    if (window.wx.updateTimelineShareData) window.wx.updateTimelineShareData(timelinePayload);
+    if (window.wx.onMenuShareAppMessage) window.wx.onMenuShareAppMessage(friendPayload);
+    if (window.wx.onMenuShareTimeline) window.wx.onMenuShareTimeline(timelinePayload);
+  });
 }
 
 function normalizeStateSnapshot(snapshot) {
@@ -669,14 +715,54 @@ const panels = {
 };
 
 function getSharePayload(ref = "page") {
+  const shareRef = ref === "page" ? getPersonalShareRef() : ref;
   const url = new URL(window.location.href);
   url.searchParams.delete("source");
-  url.searchParams.set("ref", ref);
+  url.searchParams.set("ref", shareRef);
   return {
-    title: state.activity.title,
-    text: `我刚领了一份${state.activity.title}，含导数压轴题、恒成立、零点问题和函数构造的题册+讲解视频。需要的同学也可以领。`,
+    title: getShareTitle(),
+    text: getShareDescription(),
     url: url.toString()
   };
+}
+
+function getShareTitle() {
+  return state.activity.shareTitle || state.activity.title || "高三导数50题精讲资料领取";
+}
+
+function getShareDescription() {
+  return state.activity.shareDescription || "领取题册和讲解视频，适合高三二轮查漏补缺。";
+}
+
+function getShareImageUrl() {
+  const source = state.activity.shareImage || "https://apply.xdianping.cn/assets/daoshu-preview-cover.png";
+  if (/^data:/i.test(source)) return "https://apply.xdianping.cn/assets/daoshu-preview-cover.png";
+  try {
+    return new URL(source, window.location.origin).toString();
+  } catch {
+    return "https://apply.xdianping.cn/assets/daoshu-preview-cover.png";
+  }
+}
+
+function getPersonalShareRef() {
+  if (wechatIdentity?.openid) return `wx_${stableHash(wechatIdentity.openid).toString(36)}`;
+  return `visitor_${stableHash(visitSession.id || getVisitorId()).toString(36)}`;
+}
+
+function setMetaContent(selector, value) {
+  const node = document.head.querySelector(selector);
+  if (node) node.setAttribute("content", value);
+}
+
+function updateShareMeta() {
+  const payload = getSharePayload("page");
+  const imageUrl = getShareImageUrl();
+  document.title = payload.title;
+  setMetaContent('meta[name="description"]', payload.text);
+  setMetaContent('meta[property="og:title"]', payload.title);
+  setMetaContent('meta[property="og:description"]', payload.text);
+  setMetaContent('meta[property="og:image"]', imageUrl);
+  setMetaContent('meta[property="og:url"]', payload.url);
 }
 
 function maskName(name) {
@@ -1003,6 +1089,7 @@ function renderSourceNotice() {
 }
 
 function renderActivity() {
+  updateShareMeta();
   document.querySelectorAll("[data-activity-field]").forEach((node) => {
     const key = node.dataset.activityField;
     node.textContent = state.activity[key] || publicActivityCopy[key] || "";
@@ -1014,6 +1101,12 @@ function renderActivity() {
     const key = input.dataset.editActivity;
     if (document.activeElement !== input) input.value = state.activity[key] || "";
   });
+  const qrStatus = document.querySelector("[data-activity-qr-status]");
+  if (qrStatus) {
+    qrStatus.innerHTML = state.activity.teacherQrImage
+      ? `<span>已上传：${state.activity.teacherQrFileName || "老师二维码"}</span><button type="button" data-clear-activity-image="teacherQrImage">清除二维码</button>`
+      : `<span>未上传时使用系统默认二维码。</span>`;
+  }
 }
 
 function renderJoins() {
@@ -1662,14 +1755,18 @@ function renderUnlockedMaterials() {
   `;
 }
 
+function getTeacherQrImage() {
+  return state.activity.teacherQrImage || TEACHER_QR_IMAGE;
+}
+
 function renderSuccessPanel({ name, actualJoinCount, shareRef, shareText, deliveryMethod }) {
   return `
     <div class="success-page">
       <section class="success-hero">
         <span class="success-check">✓</span>
         <div>
-          <h3>领取预约已提交</h3>
-          <p>资料已为${maskName(name)}同学预留。老师会尽快联系您，确认${deliveryMethod || "包邮或自提"}安排。</p>
+          <h3>${state.activity.successTitle || "领取预约已提交"}</h3>
+          <p>${state.activity.successSubtitle || `资料已为${maskName(name)}同学预留`}。${state.activity.successContactText || `老师会尽快联系您，确认${deliveryMethod || "包邮或自提"}安排。`}</p>
         </div>
       </section>
 
@@ -1813,6 +1910,33 @@ function uploadMaterialFile(input) {
     renderMaterialsPreview();
     publishState();
     showToast("文件已加入资料内容");
+  };
+  reader.readAsDataURL(file);
+}
+
+function uploadActivityImage(input) {
+  const key = input.dataset.uploadActivityImage;
+  const file = input.files?.[0];
+  if (!key || !file) return;
+  if (!file.type.startsWith("image/")) {
+    showToast("请选择图片格式的二维码");
+    input.value = "";
+    return;
+  }
+  const maxSize = 2 * 1024 * 1024;
+  if (file.size > maxSize) {
+    showToast("二维码图片请控制在 2MB 以内");
+    input.value = "";
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.activity[key] = String(reader.result || "");
+    state.activity[`${key.replace(/Image$/, "")}FileName`] = file.name;
+    saveState();
+    renderActivity();
+    publishState();
+    showToast("老师二维码已上传");
   };
   reader.readAsDataURL(file);
 }
@@ -2076,11 +2200,22 @@ async function shareActivity(ref = "page", customText = "") {
   const payload = getSharePayload(ref);
   const shareText = customText || `${payload.text}\n${payload.url}`;
   track("share_click");
+  updateShareMeta();
+
+  if (isWeChatBrowser()) {
+    try {
+      await navigator.clipboard.writeText(shareText);
+      showToast("请点右上角 ··· 分享，链接已复制");
+    } catch {
+      showToast("请点右上角 ··· 分享给朋友或朋友圈");
+    }
+    return;
+  }
 
   if (navigator.share) {
     try {
       await navigator.share(payload);
-      showToast("已打开分享面板");
+      showToast("已打开系统分享");
       return;
     } catch (error) {
       if (error.name === "AbortError") return;
@@ -2089,7 +2224,7 @@ async function shareActivity(ref = "page", customText = "") {
 
   try {
     await navigator.clipboard.writeText(shareText);
-    showToast("分享文案已复制，直接发给同学或家长");
+    showToast("分享链接已复制，直接发给家人或同学");
   } catch {
     showToast("请长按复制分享文案");
   }
@@ -2489,18 +2624,18 @@ function renderInlineSuccessPanel({ shareRef, shareText }) {
       <button type="button" class="inline-close-button success-close" data-close-inline-reservation aria-label="收起">×</button>
       <div class="success-check-large" aria-hidden="true">✓</div>
       <div class="success-title-copy">
-        <strong>领取预约已提交</strong>
-        <span>资料已为孩子预留</span>
+        <strong>${state.activity.successTitle || "领取预约已提交"}</strong>
+        <span>${state.activity.successSubtitle || "资料已为孩子预留"}</span>
       </div>
       <div class="success-contact-card">
         <span class="success-bell-icon" aria-hidden="true"></span>
-        <p>老师会尽快联系您确认领取安排。</p>
+        <p>${state.activity.successContactText || "老师会尽快联系您确认领取安排。"}</p>
       </div>
       <div class="success-divider"><span>或</span></div>
       <div class="qr-section">
-        <strong>长按二维码添加老师</strong>
-        <span>发送“${state.activity.passphrase || "导数资料"}”，领取题册和讲解视频</span>
-        <img src="${TEACHER_QR_IMAGE}" alt="老师二维码" />
+        <strong>${state.activity.qrTitle || "长按二维码添加老师"}</strong>
+        <span>发送“${state.activity.passphrase || "导数资料"}”，${state.activity.qrSubtitle || "领取题册和讲解视频"}</span>
+        <img src="${getTeacherQrImage()}" alt="老师二维码" />
       </div>
       <textarea id="shareText" class="inline-share-text" readonly rows="3">${shareText}</textarea>
     </section>
@@ -3033,6 +3168,17 @@ function bindChrome() {
       publishState();
     }
 
+    const clearActivityImage = event.target.closest("[data-clear-activity-image]");
+    if (clearActivityImage) {
+      const key = clearActivityImage.dataset.clearActivityImage;
+      state.activity[key] = "";
+      state.activity[`${key.replace(/Image$/, "")}FileName`] = "";
+      saveState();
+      renderActivity();
+      publishState();
+      showToast("老师二维码已清除");
+    }
+
     const finishMaterial = event.target.closest("[data-finish-material]");
     if (finishMaterial) {
       saveState();
@@ -3047,6 +3193,7 @@ function bindChrome() {
       saveState();
       renderActivity();
       renderMetrics();
+      publishState();
     });
   });
 
@@ -3063,6 +3210,11 @@ function bindChrome() {
   });
 
   document.body.addEventListener("change", (event) => {
+    const activityImageInput = event.target.closest("[data-upload-activity-image]");
+    if (activityImageInput) {
+      uploadActivityImage(activityImageInput);
+      return;
+    }
     const input = event.target.closest("[data-edit-field]");
     if (input) {
       updateFieldFromControl(input);
@@ -3116,7 +3268,17 @@ function bindChrome() {
       formHint: "为给孩子预留资料，请填写领取信息。",
       teacherWechat: "math-guide-2026",
       passphrase: "导数资料",
+      successTitle: "领取预约已提交",
+      successSubtitle: "资料已为孩子预留",
+      successContactText: "老师会尽快联系您确认领取安排。",
+      qrTitle: "长按二维码添加老师",
+      qrSubtitle: "领取题册和讲解视频",
+      teacherQrImage: "",
+      teacherQrFileName: "",
       shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
+      shareTitle: "高三导数50题精讲资料领取",
+      shareDescription: "领取题册和讲解视频，适合高三二轮查漏补缺。",
+      shareImage: "https://apply.xdianping.cn/assets/daoshu-preview-cover.png",
       audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
     };
     saveState();
@@ -3176,6 +3338,7 @@ function renderAll() {
   renderFields();
   renderVisibilityControls();
   renderMetrics();
+  configureWechatShareCard();
 }
 
 hydratePublishedState().finally(() => {
