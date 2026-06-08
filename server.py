@@ -57,6 +57,62 @@ def ensure_state_shape(state):
     return state
 
 
+def public_join(item):
+    public = {}
+    for key in ["id", "name", "source", "time", "avatar", "avatarColor", "avatarUrl"]:
+        if key in item:
+            public[key] = item.get(key)
+    return public
+
+
+def public_channel(item):
+    public = {}
+    for key in ["type", "name", "source", "views", "joins", "shares", "leads"]:
+        if key in item:
+            public[key] = item.get(key)
+    return public
+
+
+def public_material(item):
+    public = {}
+    for key in ["type", "title", "description", "body", "teaserText", "url", "fileName", "mimeType", "visibility"]:
+        if key in item:
+            public[key] = item.get(key)
+    return public
+
+
+def public_state_snapshot(state):
+    ensure_state_shape(state)
+    snapshot = {
+        "activity": state.get("activity", {}),
+        "materials": [
+            public_material(item)
+            for item in state.get("materials", [])
+            if item.get("visibility") not in {"隐藏", "领取后展示"}
+        ],
+        "fields": state.get("fields", []),
+        "visibility": state.get("visibility", {}),
+        "events": state.get("events", {}),
+        "joins": [public_join(item) for item in state.get("joins", [])],
+        "channels": [public_channel(item) for item in state.get("channels", [])],
+        "leads": [],
+        "visitors": {},
+        "publishedAt": state.get("publishedAt", "")
+    }
+    return snapshot
+
+
+def request_host(handler):
+    forwarded = handler.headers.get("X-Forwarded-Host", "")
+    raw = forwarded.split(",")[0].strip() or handler.headers.get("Host", "")
+    return raw.split(":")[0].strip().lower()
+
+
+def is_admin_state_request(handler):
+    host = request_host(handler)
+    return host in {"apply-admin.xdianping.cn", "127.0.0.1", "localhost", "::1"}
+
+
 def public_wechat_config():
     return {
         "enabled": bool(WECHAT_AUTH_ENABLED and WECHAT_APP_ID),
@@ -654,11 +710,10 @@ window.location.replace({safe_redirect});
         if not STATE_FILE.exists():
             self.send_error(404)
             return
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.end_headers()
         with STATE_LOCK:
-            self.wfile.write(STATE_FILE.read_bytes())
+            state = read_state()
+        payload = state if is_admin_state_request(self) else public_state_snapshot(state)
+        self.send_json(payload)
 
 
 if __name__ == "__main__":
