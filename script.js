@@ -1,9 +1,11 @@
-const STORAGE_KEY = "zhaosheng_prototype_state_v1";
+const STORAGE_KEY_BASE = "zhaosheng_prototype_state_v1";
 const VISITOR_KEY = "zhaosheng_visitor_id";
 const WECHAT_IDENTITY_KEY = "zhaosheng_wechat_identity_v1";
-const DEFAULT_COVER_IMAGE = "./assets/daoshu-preview-cover.png";
-const LEGACY_COVER_IMAGES = ["./assets/luoyou-daoshu-cover.jpg"];
-const TEACHER_QR_IMAGE = "./assets/teacher-qr.svg";
+const DEFAULT_ACTIVITY_SLUG = "daoshu";
+const ADMIN_ACTIVITY_KEY = "zhaosheng_admin_activity_slug";
+const DEFAULT_COVER_IMAGE = "/assets/daoshu-preview-cover.png";
+const LEGACY_COVER_IMAGES = ["/assets/luoyou-daoshu-cover.jpg"];
+const TEACHER_QR_IMAGE = "/assets/teacher-qr.svg";
 const PUBLIC_BASE_URL = "https://apply.xdianping.cn/zhaosheng";
 const SYSTEM_AVATAR_COUNT = 60;
 const SYSTEM_AVATAR_BASE_COUNT = 24;
@@ -40,12 +42,30 @@ const routePath = window.location.pathname.replace(/\/+$/, "") || "/";
 const isApplyAdminHost = window.location.hostname === "apply-admin.xdianping.cn";
 const isApplyPublicHost = window.location.hostname === "apply.xdianping.cn";
 const isAdminPreview = isApplyAdminHost || routePath === "/admin" || urlParams.get("admin") === "1" || urlParams.get("view") === "admin";
+function normalizeActivitySlug(value) {
+  const text = String(value || "").trim().toLowerCase();
+  if (!text) return DEFAULT_ACTIVITY_SLUG;
+  const slug = text
+    .replace(/[\s/.]+/g, "-")
+    .replace(/[^a-z0-9_-]/g, "")
+    .replace(/^[-_]+|[-_]+$/g, "");
+  return slug || DEFAULT_ACTIVITY_SLUG;
+}
+function readActivitySlugFromPath() {
+  const parts = routePath.split("/").filter(Boolean);
+  if (["zhaosheng", "parent", "student"].includes(parts[0]) && parts[1]) return normalizeActivitySlug(parts[1]);
+  return normalizeActivitySlug(urlParams.get("activity") || (isAdminPreview ? localStorage.getItem(ADMIN_ACTIVITY_KEY) : "") || DEFAULT_ACTIVITY_SLUG);
+}
+let activeActivitySlug = readActivitySlugFromPath();
 const isPublicPage =
   !isAdminPreview &&
   (isApplyPublicHost ||
     routePath === "/zhaosheng" ||
+    routePath.startsWith("/zhaosheng/") ||
     routePath === "/parent" ||
+    routePath.startsWith("/parent/") ||
     routePath === "/student" ||
+    routePath.startsWith("/student/") ||
     window.location.hostname.includes("trycloudflare.com") ||
     publicVersion.includes("clean") ||
     publicVersion.includes("public") ||
@@ -60,6 +80,22 @@ if (isPublicPage) {
 }
 if (isAdminPreview) {
   document.documentElement.classList.add("admin-preview");
+}
+
+function storageKey() {
+  return `${STORAGE_KEY_BASE}_${activeActivitySlug}`;
+}
+
+function getPublicActivityUrl(slug = activeActivitySlug) {
+  const normalized = normalizeActivitySlug(slug);
+  return normalized === DEFAULT_ACTIVITY_SLUG ? PUBLIC_BASE_URL : `${PUBLIC_BASE_URL}/${normalized}`;
+}
+
+function apiWithActivity(path) {
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set("activity", activeActivitySlug);
+  if (isAdminPreview) url.searchParams.set("admin", "1");
+  return `${url.pathname}${url.search}`;
 }
 
 const defaultState = {
@@ -302,10 +338,11 @@ let activeLeadFilter = "全部访客";
 let selectedCrmEntryKey = "";
 let latestPublishedAt = "";
 let adminAuthenticated = !isAdminPreview;
+let activityCatalog = [];
 
 function loadState() {
   try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const saved = JSON.parse(localStorage.getItem(storageKey()));
     return normalizeStateSnapshot(saved);
   } catch {
     return structuredClone(defaultState);
@@ -404,8 +441,8 @@ function normalizeStateSnapshot(snapshot) {
   };
   if (merged.activity.contentTitle === "资料包内容") merged.activity.contentTitle = defaultState.activity.contentTitle;
   if (merged.activity.contentNote === "文字 / 图片 / 视频 / PDF") merged.activity.contentNote = defaultState.activity.contentNote;
-  merged.leads = mergeByKey(defaultState.leads, snapshot.leads || [], "name");
-  merged.channels = mergeByKey(defaultState.channels, snapshot.channels || [], "source");
+  merged.leads = Array.isArray(snapshot.leads) ? snapshot.leads : defaultState.leads;
+  merged.channels = Array.isArray(snapshot.channels) ? snapshot.channels : defaultState.channels;
   merged.fields = normalizeFields(snapshot.fields || defaultState.fields);
   merged.materials = mergeMaterials(Array.isArray(snapshot.materials) ? snapshot.materials : defaultState.materials, !Array.isArray(snapshot.materials));
   return merged;
@@ -426,19 +463,20 @@ function mergeByKey(defaultItems, savedItems, key) {
 }
 
 function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  localStorage.setItem(storageKey(), JSON.stringify(state));
 }
 
 function getPublishSnapshot() {
   return {
     ...JSON.parse(JSON.stringify(state)),
+    activitySlug: activeActivitySlug,
     publishedAt: new Date().toISOString()
   };
 }
 
 async function fetchPublishedState() {
   if (window.location.protocol === "file:") return null;
-  const endpoints = isAdminPreview ? ["/api/state"] : ["/api/state", "./data/published-state.json"];
+  const endpoints = isAdminPreview ? [apiWithActivity("/api/state")] : [apiWithActivity("/api/state"), apiWithActivity("/data/published-state.json")];
   for (const endpoint of endpoints) {
     try {
       const response = await fetch(`${endpoint}${endpoint.includes("?") ? "&" : "?"}t=${Date.now()}`, {
@@ -467,6 +505,98 @@ async function postJsonSafeGet(endpoint) {
   } catch {
     return null;
   }
+}
+
+async function loadActivityCatalog() {
+  if (!isAdminPreview || !adminAuthenticated) return;
+  const result = await postJsonSafeGet("/api/activities");
+  if (Array.isArray(result?.activities)) activityCatalog = result.activities;
+}
+
+function renderActivitySwitcher() {
+  if (!isAdminPreview) return;
+  let switcher = document.querySelector("#activitySwitcher");
+  if (!adminAuthenticated) {
+    switcher?.remove();
+    return;
+  }
+  const brand = document.querySelector(".brand-mark");
+  if (!brand) return;
+  if (!switcher) {
+    switcher = document.createElement("div");
+    switcher.id = "activitySwitcher";
+    switcher.className = "activity-switcher";
+    brand.insertAdjacentElement("afterend", switcher);
+  }
+  const options = (activityCatalog.length ? activityCatalog : [{ slug: activeActivitySlug, title: state.activity.adminName || state.activity.title }])
+    .map((item) => `<option value="${item.slug}" ${item.slug === activeActivitySlug ? "selected" : ""}>${item.title || item.slug}</option>`)
+    .join("");
+  switcher.innerHTML = `
+    <label>
+      <span>当前活动</span>
+      <select id="activitySelect">${options}</select>
+    </label>
+    <div class="activity-switcher-actions">
+      <button type="button" id="createActivityButton">新建活动</button>
+      <button type="button" id="clearActivityDataButton">清空数据</button>
+    </div>
+    <small>家长端：${getPublicActivityUrl()}</small>
+  `;
+}
+
+async function switchActivity(slug) {
+  const nextSlug = normalizeActivitySlug(slug);
+  if (!nextSlug || nextSlug === activeActivitySlug) return;
+  saveState();
+  activeActivitySlug = nextSlug;
+  localStorage.setItem(ADMIN_ACTIVITY_KEY, activeActivitySlug);
+  latestPublishedAt = "";
+  selectedCrmEntryKey = "";
+  activeLeadFilter = "全部访客";
+  await hydratePublishedState();
+  renderAll();
+  showToast("已切换活动");
+}
+
+async function createNewActivity() {
+  if (!adminAuthenticated) {
+    showToast("请先登录后台");
+    return;
+  }
+  const title = window.prompt("新活动名称，例如：高三圆锥曲线资料领取", "");
+  if (!title?.trim()) return;
+  const defaultSlug = `activity-${new Date().toISOString().slice(5, 10).replace("-", "")}`;
+  const slug = normalizeActivitySlug(window.prompt("活动链接后缀，只用英文/数字，例如：yuanzhui", defaultSlug));
+  if (!slug || slug === DEFAULT_ACTIVITY_SLUG) {
+    showToast("请换一个活动链接后缀");
+    return;
+  }
+  const result = await postJson("/api/activities", { title: title.trim(), slug, templateSlug: activeActivitySlug });
+  if (!result?.ok) {
+    showToast("新建失败，可能链接后缀已存在");
+    return;
+  }
+  if (Array.isArray(result.activities)) activityCatalog = result.activities;
+  await switchActivity(result.activity.slug);
+}
+
+async function clearCurrentActivityData() {
+  if (!adminAuthenticated) {
+    showToast("请先登录后台");
+    return;
+  }
+  const ok = window.confirm("只清空当前活动的访问、领取、CRM 和分享数据，页面内容会保留。确定清空吗？");
+  if (!ok) return;
+  const result = await postJson(apiWithActivity("/api/activities/reset"), { activitySlug: activeActivitySlug });
+  if (!result?.ok) {
+    showToast("清空失败，请稍后重试");
+    return;
+  }
+  if (Array.isArray(result.activities)) activityCatalog = result.activities;
+  replaceState(result.state);
+  saveState();
+  renderAll();
+  showToast("当前活动数据已清空");
 }
 
 async function checkAdminSession() {
@@ -511,7 +641,8 @@ async function unlockAdmin(password) {
 
 async function hydratePublishedState() {
   if (isAdminPreview && !adminAuthenticated) return;
-  const hasLocalDraft = Boolean(localStorage.getItem(STORAGE_KEY));
+  await loadActivityCatalog();
+  const hasLocalDraft = Boolean(localStorage.getItem(storageKey()));
   const snapshot = await fetchPublishedState();
   if (!snapshot) return;
   if (isAdminPreview || isPublicPage || !hasLocalDraft) {
@@ -556,6 +687,7 @@ async function postJson(endpoint, payload, options = {}) {
 
 function serverSyncPayload(extra = {}) {
   return {
+    activitySlug: activeActivitySlug,
     visitorId: visitSession.id,
     source: state.currentSource,
     behavior: getVisitorSnapshot(),
@@ -566,17 +698,17 @@ function serverSyncPayload(extra = {}) {
 
 function syncVisitToServer(recordView = false, keepalive = false) {
   if (!isPublicPage) return;
-  postJson("/api/visit", serverSyncPayload({ recordView }), { keepalive });
+  postJson(apiWithActivity("/api/visit"), serverSyncPayload({ recordView }), { keepalive });
 }
 
 function syncEventToServer(key) {
   if (!isPublicPage) return;
-  postJson("/api/event", serverSyncPayload({ key }), { keepalive: true });
+  postJson(apiWithActivity("/api/event"), serverSyncPayload({ key }), { keepalive: true });
 }
 
 async function syncLeadSubmissionToServer(submission) {
   if (!isPublicPage) return null;
-  const result = await postJson("/api/lead", submission);
+  const result = await postJson(apiWithActivity("/api/lead"), { ...submission, activitySlug: activeActivitySlug });
   if (!result?.ok) return null;
   return {
     ...submission,
@@ -585,13 +717,15 @@ async function syncLeadSubmissionToServer(submission) {
     shareRef: result.shareRef || submission.shareRef,
     shareUrl: result.shareUrl || submission.shareUrl,
     actualJoinCount: result.actualJoinCount,
+    duplicate: Boolean(result.duplicate),
+    serverMessage: result.message || "",
     synced: true
   };
 }
 
 function syncFullStateToServer() {
   if (window.location.protocol === "file:") return;
-  postJson("/api/state", getPublishSnapshot(), { keepalive: true });
+  postJson(apiWithActivity("/api/state"), getPublishSnapshot(), { keepalive: true });
 }
 
 function applySyncedStateSnapshot(snapshot) {
@@ -609,7 +743,7 @@ async function publishState() {
     button.textContent = "发布中";
   }
   try {
-    const response = await fetch("/api/state", {
+    const response = await fetch(apiWithActivity("/api/state"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
@@ -633,7 +767,11 @@ async function publishState() {
 }
 
 function getActualJoinCount() {
-  return state.joins.length;
+  return getVisibleJoins().length;
+}
+
+function getVisibleJoins() {
+  return state.joins.filter((item) => !item.hiddenFromPublic);
 }
 
 function getTotalQuota() {
@@ -722,7 +860,7 @@ function inferFieldKey(field, index) {
 }
 
 function resetState() {
-  localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(storageKey());
   localStorage.removeItem(VISITOR_KEY);
   Object.keys(state).forEach((key) => delete state[key]);
   Object.assign(state, structuredClone(defaultState));
@@ -876,7 +1014,7 @@ function getSystemAvatarUrl(seed) {
   const hash = stableHash(seed);
   const base = (hash % SYSTEM_AVATAR_BASE_COUNT) + 1;
   const variant = hash % SYSTEM_AVATAR_COUNT;
-  return `./assets/system-avatars/avatar-${String(base).padStart(2, "0")}.svg?v=${variant}`;
+  return `/assets/system-avatars/avatar-${String(base).padStart(2, "0")}.svg?v=${variant}`;
 }
 
 function readCurrentSource() {
@@ -1129,12 +1267,13 @@ function getSharerNameFromSource(source) {
 
 function getRecentJoins() {
   const sharerName = getSharerNameFromSource(state.currentSource);
-  if (!sharerName) return state.joins.slice(0, 4);
+  const visibleJoins = getVisibleJoins();
+  if (!sharerName) return visibleJoins.slice(0, 4);
 
-  const sharerJoin = state.joins.find((item) => item.name === sharerName);
-  if (!sharerJoin) return state.joins.slice(0, 4);
+  const sharerJoin = visibleJoins.find((item) => item.name === sharerName);
+  if (!sharerJoin) return visibleJoins.slice(0, 4);
 
-  return [sharerJoin, ...state.joins.filter((item) => item.name !== sharerName)].slice(0, 4);
+  return [sharerJoin, ...visibleJoins.filter((item) => item.name !== sharerName)].slice(0, 4);
 }
 
 function renderSourceNotice() {
@@ -1456,6 +1595,9 @@ function renderLeadDetail() {
   const referral = state.channels.find((channel) => channel.type === "家长分享" && channel.name.startsWith(lead.name));
   const behavior = lead.behavior || {};
   const leadWechat = lead.wechatIdentity || behavior.wechatIdentity || null;
+  const leadJoinIndex = findExistingJoinIndex(lead);
+  const leadJoin = leadJoinIndex >= 0 ? state.joins[leadJoinIndex] : null;
+  const hiddenFromPublic = Boolean(lead.hiddenFromPublic || leadJoin?.hiddenFromPublic);
   document.querySelector("#leadDetail").innerHTML = `
     <div class="brand-mark">
       <span>${lead.name[0]}</span>
@@ -1502,6 +1644,13 @@ function renderLeadDetail() {
       <div class="detail-kv">
         ${renderLeadAnswers(lead)}
       </div>
+    </div>
+    <div class="admin-record-actions">
+      <button type="button" data-toggle-lead-public>
+        ${hiddenFromPublic ? "恢复前台动态" : "隐藏前台动态"}
+      </button>
+      <button type="button" class="danger" data-delete-selected-lead>删除线索</button>
+      <small>${hiddenFromPublic ? "这条记录当前不显示在家长端近期领取和领取统计中。" : "隐藏只影响家长端展示，后台仍保留原始记录。"}</small>
     </div>
     <div class="share-contribution">
       <strong>分享贡献</strong>
@@ -1606,6 +1755,59 @@ function renderLeadAnswers(lead) {
   return deliveryFields || configured;
 }
 
+function getSelectedLeadEntry() {
+  const entries = getCrmEntries();
+  return entries.find((item) => item.key === selectedCrmEntryKey && item.kind === "lead") || null;
+}
+
+function toggleSelectedLeadPublicVisibility() {
+  const entry = getSelectedLeadEntry();
+  if (!entry) return;
+  const lead = entry.item;
+  const joinIndex = findExistingJoinIndex(lead);
+  const join = joinIndex >= 0 ? state.joins[joinIndex] : null;
+  const nextHidden = !Boolean(lead.hiddenFromPublic || join?.hiddenFromPublic);
+  lead.hiddenFromPublic = nextHidden;
+  if (join) join.hiddenFromPublic = nextHidden;
+  const action = nextHidden ? "后台隐藏前台领取动态" : "后台恢复前台领取动态";
+  lead.actions = mergeActions(lead.actions, [action]);
+  saveState();
+  renderAll();
+  syncFullStateToServer();
+  showToast(nextHidden ? "已隐藏前台动态" : "已恢复前台动态");
+}
+
+function deleteSelectedLead() {
+  const entry = getSelectedLeadEntry();
+  if (!entry) return;
+  const lead = entry.item;
+  const ok = window.confirm(`确定删除 ${lead.name} 的领取记录吗？会同时从近期领取里移除。`);
+  if (!ok) return;
+
+  const joinIndex = findExistingJoinIndex(lead);
+  if (joinIndex >= 0) state.joins.splice(joinIndex, 1);
+
+  state.leads.splice(entry.index, 1);
+  state.channels = state.channels
+    .map((channel) => {
+      const nextLeads = (channel.leads || []).filter((name) => name !== lead.name);
+      const removedCount = (channel.leads || []).length - nextLeads.length;
+      return {
+        ...channel,
+        leads: nextLeads,
+        joins: removedCount ? Math.max(0, Number(channel.joins || 0) - removedCount) : channel.joins
+      };
+    })
+    .filter((channel) => !(channel.type === "家长分享" && channel.source === lead.shareRef));
+
+  selectedCrmEntryKey = "";
+  state.selectedLead = Math.max(0, Math.min(state.selectedLead, state.leads.length - 1));
+  saveState();
+  renderAll();
+  syncFullStateToServer();
+  showToast("线索和近期领取已删除");
+}
+
 function renderChannels() {
   const totals = state.channels.reduce(
     (sum, channel) => {
@@ -1627,7 +1829,7 @@ function renderChannels() {
               <strong>${channel.name}</strong>
               <span>${channel.type}</span>
             </div>
-            <code>${PUBLIC_BASE_URL}?source=${channel.source}</code>
+            <code>${getPublicActivityUrl()}?source=${encodeURIComponent(channel.source)}</code>
             <div class="source-leads">
               ${channel.leads.map((lead) => `<span>${lead}</span>`).join("")}
             </div>
@@ -2064,7 +2266,7 @@ function renderReferrals() {
               <strong>${sharer}</strong>
               <span>${channel.source}</span>
             </div>
-            <code>${PUBLIC_BASE_URL}?ref=${channel.source}</code>
+            <code>${getPublicActivityUrl()}?ref=${encodeURIComponent(channel.source)}</code>
             <div class="referred-leads">
               ${renderReferredLeadDetails(channel.leads)}
             </div>
@@ -2520,6 +2722,7 @@ function createLeadSubmission(type, answers) {
 
   return {
     submissionId: `lead_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    activitySlug: activeActivitySlug,
     type,
     source: state.currentSource,
     visitorId: visitSession.id,
@@ -2580,22 +2783,14 @@ function applyLeadSubmission(submission) {
 
   const existingIndex = findExistingLeadIndex(lead);
   if (existingIndex >= 0) {
-    const existingLead = state.leads.splice(existingIndex, 1)[0];
-    const mergedLead = {
-      ...existingLead,
-      ...lead,
-      score: Math.max(Number(existingLead.score) || 0, Number(lead.score) || 0),
-      actions: mergeActions(existingLead.actions, [...(lead.actions || []), "重复提交：已更新原客户档案"]),
-      repeatSubmits: (Number(existingLead.repeatSubmits) || 0) + 1
-    };
-    state.leads.unshift(mergedLead);
-
-    const existingJoinIndex = findExistingJoinIndex(existingLead);
-    if (existingJoinIndex >= 0) state.joins.splice(existingJoinIndex, 1);
-    state.joins.unshift({ ...join, id: existingLead.joinId || join.id });
+    const existingLead = state.leads[existingIndex];
+    existingLead.actions = mergeActions(existingLead.actions, ["重复提交：已拦截，未重复计入领取动态"]);
+    existingLead.repeatSubmits = (Number(existingLead.repeatSubmits) || 0) + 1;
+    existingLead.updatedAt = formatDateTime(new Date());
+    if (lead.wechatIdentity?.openid) existingLead.wechatIdentity = lead.wechatIdentity;
 
     state.events.repeat_submit = (state.events.repeat_submit || 0) + 1;
-    state.selectedLead = 0;
+    state.selectedLead = existingIndex;
     saveState();
     return getActualJoinCount();
   }
@@ -2972,9 +3167,12 @@ function bindLeadFormSubmit(form, type, onSuccess) {
     const localSubmission = createLeadSubmission(type, answers);
     const serverSubmission = await syncLeadSubmissionToServer(localSubmission);
     const finalSubmission = serverSubmission || localSubmission;
-    const actualJoinCount = applyLeadSubmission(finalSubmission);
+    const actualJoinCount = finalSubmission.duplicate
+      ? finalSubmission.actualJoinCount || getActualJoinCount()
+      : applyLeadSubmission(finalSubmission);
 
     renderAll();
+    if (finalSubmission.duplicate) showToast("已提交过领取预约，不重复计入名额");
     onSuccess(finalSubmission, actualJoinCount, answers);
     if (!serverSubmission && isPublicPage) showToast("已本机保存，服务器同步失败时请稍后刷新重试");
   });
@@ -2999,12 +3197,12 @@ function bindDrawerButtons(type) {
           <p>${name} 已加入传播统计。</p>
           <div class="group-guide">
             <strong>渠道链接</strong>
-            <span class="link-text">${PUBLIC_BASE_URL}?source=${source}</span>
+            <span class="link-text">${getPublicActivityUrl()}?source=${encodeURIComponent(source)}</span>
             <small>把这个链接发给对应老师、群或平台，后台会按来源统计。</small>
           </div>
         </div>
         <div class="submit-row">
-          <button type="button" data-copy-channel="${PUBLIC_BASE_URL}?source=${source}">复制链接</button>
+          <button type="button" data-copy-channel="${getPublicActivityUrl()}?source=${encodeURIComponent(source)}">复制链接</button>
           <button type="button" data-close-drawer>完成</button>
         </div>
       `;
@@ -3177,6 +3375,15 @@ function bindChrome() {
   });
 
   document.body.addEventListener("click", (event) => {
+    if (event.target.closest("#createActivityButton")) {
+      createNewActivity();
+      return;
+    }
+    if (event.target.closest("#clearActivityDataButton")) {
+      clearCurrentActivityData();
+      return;
+    }
+
     const trackButton = event.target.closest("[data-track]");
     if (trackButton) track(trackButton.dataset.track);
 
@@ -3225,6 +3432,16 @@ function bindChrome() {
       syncFullStateToServer();
       const hint = document.querySelector("#followSavedHint");
       if (hint) hint.textContent = "已保存";
+    }
+
+    if (event.target.closest("[data-toggle-lead-public]")) {
+      toggleSelectedLeadPublicVisibility();
+      return;
+    }
+
+    if (event.target.closest("[data-delete-selected-lead]")) {
+      deleteSelectedLead();
+      return;
     }
 
     const focusLead = event.target.closest("[data-focus-lead]");
@@ -3317,6 +3534,12 @@ function bindChrome() {
   });
 
   document.body.addEventListener("change", (event) => {
+    const activitySelect = event.target.closest("#activitySelect");
+    if (activitySelect) {
+      switchActivity(activitySelect.value);
+      return;
+    }
+
     const activityImageInput = event.target.closest("[data-upload-activity-image]");
     if (activityImageInput) {
       uploadActivityImage(activityImageInput);
@@ -3433,6 +3656,7 @@ function renderAll() {
   }
   applyVisibilitySettings();
   renderActivity();
+  renderActivitySwitcher();
   renderSourceNotice();
   renderJoins();
   renderEvents();

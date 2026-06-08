@@ -22,6 +22,8 @@ from urllib.request import urlopen
 
 ROOT = Path(__file__).resolve().parent
 STATE_FILE = ROOT / "data" / "published-state.json"
+ACTIVITIES_DIR = ROOT / "data" / "activities"
+DEFAULT_ACTIVITY_SLUG = "daoshu"
 SERVER_HOST = os.environ.get("HOST", "127.0.0.1").strip() or "127.0.0.1"
 SERVER_PORT = int(os.environ.get("PORT", "4173").strip() or "4173")
 STATE_LOCK = RLock()
@@ -41,17 +43,59 @@ def route(path):
     return urlparse(path).path
 
 
-def read_state():
-    if not STATE_FILE.exists():
+def normalize_activity_slug(value):
+    text = str(value or "").strip().lower()
+    if not text:
+        return DEFAULT_ACTIVITY_SLUG
+    cleaned = []
+    for char in text:
+        if char.isalnum() or char in ("-", "_"):
+            cleaned.append(char)
+        elif char in (" ", "/", "."):
+            cleaned.append("-")
+    slug = "".join(cleaned).strip("-_")
+    return slug or DEFAULT_ACTIVITY_SLUG
+
+
+def activity_slug_from_path(path):
+    current_route = route(path).strip("/")
+    parts = current_route.split("/")
+    if len(parts) >= 2 and parts[0] in {"zhaosheng", "parent", "student"}:
+        return normalize_activity_slug(parts[1])
+    return DEFAULT_ACTIVITY_SLUG
+
+
+def activity_slug_from_query(path):
+    query = parse_qs(urlparse(path).query)
+    return normalize_activity_slug(query.get("activity", query.get("slug", [""]))[0])
+
+
+def activity_slug_from_payload(payload, path=""):
+    if isinstance(payload, dict) and payload.get("activitySlug"):
+        return normalize_activity_slug(payload.get("activitySlug"))
+    return activity_slug_from_query(path)
+
+
+def state_file_for_slug(slug):
+    normalized = normalize_activity_slug(slug)
+    if normalized == DEFAULT_ACTIVITY_SLUG:
+        return STATE_FILE
+    return ACTIVITIES_DIR / f"{normalized}.json"
+
+
+def read_state(slug=None):
+    state_file = state_file_for_slug(slug)
+    if not state_file.exists():
         return {}
-    return json.loads(STATE_FILE.read_text(encoding="utf-8") or "{}")
+    return json.loads(state_file.read_text(encoding="utf-8") or "{}")
 
 
-def write_state(state):
-    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    tmp_file = STATE_FILE.with_suffix(".json.tmp")
+def write_state(state, slug=None):
+    state_file = state_file_for_slug(slug)
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    tmp_file = state_file.with_suffix(".json.tmp")
     tmp_file.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
-    tmp_file.replace(STATE_FILE)
+    tmp_file.replace(state_file)
 
 
 def ensure_state_shape(state):
@@ -100,13 +144,84 @@ def public_state_snapshot(state):
         "fields": state.get("fields", []),
         "visibility": state.get("visibility", {}),
         "events": state.get("events", {}),
-        "joins": [public_join(item) for item in state.get("joins", [])],
+        "joins": [public_join(item) for item in state.get("joins", []) if not item.get("hiddenFromPublic")],
         "channels": [public_channel(item) for item in state.get("channels", [])],
         "leads": [],
         "visitors": {},
         "publishedAt": state.get("publishedAt", "")
     }
     return snapshot
+
+
+def visible_join_count(state):
+    ensure_state_shape(state)
+    return len([item for item in state.get("joins", []) if not item.get("hiddenFromPublic")])
+
+
+def reset_activity_runtime_data(state):
+    ensure_state_shape(state)
+    state["joins"] = []
+    state["leads"] = []
+    state["channels"] = []
+    state["visitors"] = {}
+    state["selectedLead"] = 0
+    state["currentSource"] = {"kind": "direct", "key": "direct"}
+    state["sourceVisitRecorded"] = ""
+    events = state.setdefault("events", {})
+    for key in list(events.keys()):
+        events[key] = 0
+    return state
+
+
+def activity_summary(slug, state):
+    ensure_state_shape(state)
+    activity = state.get("activity", {})
+    return {
+        "slug": normalize_activity_slug(slug),
+        "title": activity.get("title") or activity.get("adminName") or slug,
+        "adminName": activity.get("adminName") or activity.get("title") or slug,
+        "updatedAt": state.get("publishedAt", ""),
+        "leads": len(state.get("leads", [])),
+        "joins": len(state.get("joins", [])),
+        "views": int((state.get("events") or {}).get("page_view") or 0)
+    }
+
+
+def list_activities():
+    items = [activity_summary(DEFAULT_ACTIVITY_SLUG, read_state(DEFAULT_ACTIVITY_SLUG))]
+    if ACTIVITIES_DIR.exists():
+        for path in sorted(ACTIVITIES_DIR.glob("*.json")):
+            slug = normalize_activity_slug(path.stem)
+            if slug == DEFAULT_ACTIVITY_SLUG:
+                continue
+            try:
+                items.append(activity_summary(slug, read_state(slug)))
+            except Exception:
+                continue
+    return items
+
+
+def create_activity(payload):
+    slug = normalize_activity_slug(payload.get("slug") or payload.get("title") or f"activity-{int(time.time())}")
+    if slug == DEFAULT_ACTIVITY_SLUG:
+        raise ValueError("default activity already exists")
+    target = state_file_for_slug(slug)
+    if target.exists():
+        raise ValueError("activity already exists")
+    template_slug = normalize_activity_slug(payload.get("templateSlug") or DEFAULT_ACTIVITY_SLUG)
+    state = copy.deepcopy(read_state(template_slug) or read_state(DEFAULT_ACTIVITY_SLUG) or {})
+    ensure_state_shape(state)
+    reset_activity_runtime_data(state)
+    title = str(payload.get("title") or "").strip()
+    if title:
+        state.setdefault("activity", {})
+        state["activity"]["title"] = title
+        state["activity"]["adminName"] = title
+        if not state["activity"].get("shareTitle"):
+            state["activity"]["shareTitle"] = title
+    state["publishedAt"] = now_label()
+    write_state(state, slug)
+    return activity_summary(slug, state)
 
 
 def request_host(handler):
@@ -117,7 +232,8 @@ def request_host(handler):
 
 def is_admin_state_request(handler):
     host = request_host(handler)
-    return host in {"apply-admin.xdianping.cn", "127.0.0.1", "localhost", "::1"}
+    query = parse_qs(urlparse(handler.path).query)
+    return host == "apply-admin.xdianping.cn" or query.get("admin", [""])[0] == "1"
 
 
 def get_admin_password():
@@ -541,7 +657,7 @@ def add_lead_submission(state, payload):
                 return {
                     "duplicate": True,
                     "lead": lead,
-                    "actualJoinCount": len(state["joins"]),
+                    "actualJoinCount": visible_join_count(state),
                     "shareRef": lead.get("shareRef")
                 }
 
@@ -591,32 +707,34 @@ def add_lead_submission(state, payload):
 
     existing_index = find_existing_lead_index(state, incoming_lead)
     if existing_index >= 0:
-        existing_lead = state["leads"].pop(existing_index)
-        incoming_lead["actions"] = merge_actions(
+        existing_lead = state["leads"][existing_index]
+        existing_lead["actions"] = merge_actions(
             existing_lead.get("actions", []),
-            list(incoming_lead.get("actions", [])) + ["重复提交：已更新原客户档案"]
+            ["重复提交：已拦截，未重复计入领取动态"]
         )
-        incoming_lead["score"] = max(int(existing_lead.get("score") or 0), int(incoming_lead.get("score") or 0))
-        incoming_lead["repeatSubmits"] = int(existing_lead.get("repeatSubmits") or 0) + 1
-        incoming_lead["createdAt"] = existing_lead.get("createdAt") or incoming_lead["createdAt"]
-        incoming_lead["updatedAt"] = now_label()
-        incoming_lead["shareRef"] = existing_lead.get("shareRef") or incoming_lead["shareRef"]
-        state["leads"].insert(0, {**existing_lead, **incoming_lead})
+        existing_lead["repeatSubmits"] = int(existing_lead.get("repeatSubmits") or 0) + 1
+        existing_lead["updatedAt"] = now_label()
+        if isinstance(payload.get("wechatIdentity"), dict) and payload["wechatIdentity"].get("openid"):
+            existing_lead["wechatIdentity"] = incoming_lead.get("wechatIdentity") or existing_lead.get("wechatIdentity")
 
         existing_join_index = find_existing_join_index(state, existing_lead)
-        if existing_join_index >= 0:
-            state["joins"].pop(existing_join_index)
-        incoming_join["id"] = existing_lead.get("joinId") or incoming_join.get("id")
-        state["joins"].insert(0, incoming_join)
+        existing_join = state["joins"][existing_join_index] if existing_join_index >= 0 else None
+        duplicate_share_url = share_url
+        existing_share_ref = existing_lead.get("shareRef")
+        if isinstance(duplicate_share_url, str) and existing_share_ref:
+            for token in [payload.get("shareRef"), share_ref]:
+                if token:
+                    duplicate_share_url = duplicate_share_url.replace(str(token), str(existing_share_ref))
         state["events"]["repeat_submit"] = int(state["events"].get("repeat_submit") or 0) + 1
         merge_visitor(state, payload.get("visitorId"), payload.get("behavior"), source)
         return {
             "duplicate": True,
-            "join": incoming_join,
-            "lead": state["leads"][0],
-            "actualJoinCount": len(state["joins"]),
-            "shareRef": state["leads"][0].get("shareRef"),
-            "shareUrl": share_url
+            "join": existing_join or incoming_join,
+            "lead": existing_lead,
+            "actualJoinCount": visible_join_count(state),
+            "shareRef": existing_lead.get("shareRef"),
+            "shareUrl": duplicate_share_url,
+            "message": "same user already submitted"
         }
 
     state["joins"].insert(0, incoming_join)
@@ -639,7 +757,7 @@ def add_lead_submission(state, payload):
         "duplicate": False,
         "join": incoming_join,
         "lead": incoming_lead,
-        "actualJoinCount": len(state["joins"]),
+        "actualJoinCount": visible_join_count(state),
         "shareRef": share_ref,
         "shareUrl": share_url
     }
@@ -681,13 +799,20 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         current_route = route(self.path)
         if current_route == "/api/state":
-            self.send_json_state()
+            self.send_json_state(activity_slug_from_query(self.path))
             return
         if current_route == "/data/published-state.json":
-            self.send_json_state()
+            self.send_json_state(activity_slug_from_query(self.path))
             return
         if current_route.startswith("/data/"):
             self.send_error(404)
+            return
+        if current_route == "/api/activities":
+            if not is_admin_authenticated(self):
+                self.send_json({"ok": False, "error": "admin login required"}, status=401)
+                return
+            with STATE_LOCK:
+                self.send_json({"ok": True, "activities": list_activities()})
             return
         if current_route == "/api/admin/session":
             self.send_json({"ok": True, "authenticated": is_admin_authenticated(self)})
@@ -724,11 +849,14 @@ class Handler(SimpleHTTPRequestHandler):
         if current_route in ("/parent", "/student", "/admin", "/zhaosheng"):
             self.serve_index()
             return
+        if current_route.startswith(("/parent/", "/student/", "/zhaosheng/")):
+            self.serve_index()
+            return
         super().do_GET()
 
     def do_HEAD(self):
         if route(self.path) == "/api/state":
-            if not STATE_FILE.exists():
+            if not state_file_for_slug(activity_slug_from_query(self.path)).exists():
                 self.send_error(404)
                 return
             self.send_response(200)
@@ -752,8 +880,25 @@ class Handler(SimpleHTTPRequestHandler):
                         return
                     if not isinstance(payload.get("activity"), dict):
                         raise ValueError("invalid state payload")
-                    write_state(payload)
+                    slug = activity_slug_from_payload(payload, self.path)
+                    write_state(payload, slug)
                     result = {"ok": True}
+                elif path == "/api/activities":
+                    if not is_admin_authenticated(self):
+                        self.send_json({"ok": False, "error": "admin login required"}, status=401)
+                        return
+                    activity = create_activity(payload)
+                    result = {"ok": True, "activity": activity, "activities": list_activities()}
+                elif path == "/api/activities/reset":
+                    if not is_admin_authenticated(self):
+                        self.send_json({"ok": False, "error": "admin login required"}, status=401)
+                        return
+                    slug = activity_slug_from_payload(payload, self.path)
+                    state = read_state(slug)
+                    reset_activity_runtime_data(state)
+                    state["publishedAt"] = now_label()
+                    write_state(state, slug)
+                    result = {"ok": True, "activity": activity_summary(slug, state), "state": state, "activities": list_activities()}
                 elif path == "/api/admin/login":
                     password = str(payload.get("password") or "")
                     if not password or not hmac.compare_digest(password, get_admin_password()):
@@ -765,19 +910,22 @@ class Handler(SimpleHTTPRequestHandler):
                     self.send_admin_logout_response()
                     return
                 elif path == "/api/lead":
-                    state = read_state()
+                    slug = activity_slug_from_payload(payload, self.path)
+                    state = read_state(slug)
                     result = add_lead_submission(state, payload)
-                    write_state(state)
+                    write_state(state, slug)
                     result = {"ok": True, **result}
                 elif path == "/api/visit":
-                    state = read_state()
+                    slug = activity_slug_from_payload(payload, self.path)
+                    state = read_state(slug)
                     record_visit(state, payload)
-                    write_state(state)
+                    write_state(state, slug)
                     result = {"ok": True}
                 elif path == "/api/event":
-                    state = read_state()
+                    slug = activity_slug_from_payload(payload, self.path)
+                    state = read_state(slug)
                     record_event(state, payload)
-                    write_state(state)
+                    write_state(state, slug)
                     result = {"ok": True}
                 else:
                     self.send_error(404)
@@ -835,12 +983,12 @@ window.location.replace({safe_redirect});
         self.end_headers()
         self.wfile.write(json.dumps({"ok": True, "authenticated": False}, ensure_ascii=False).encode("utf-8"))
 
-    def send_json_state(self):
-        if not STATE_FILE.exists():
+    def send_json_state(self, slug=None):
+        if not state_file_for_slug(slug).exists():
             self.send_error(404)
             return
         with STATE_LOCK:
-            state = read_state()
+            state = read_state(slug)
         if is_admin_state_request(self):
             if not is_admin_authenticated(self):
                 self.send_json({"ok": False, "error": "admin login required"}, status=401)

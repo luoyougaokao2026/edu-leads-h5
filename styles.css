@@ -2256,6 +2256,64 @@ h1 {
   color: var(--muted);
 }
 
+.activity-switcher {
+  display: grid;
+  gap: 8px;
+  margin: -10px 0 18px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.activity-switcher label,
+.activity-switcher span,
+.activity-switcher small {
+  display: block;
+}
+
+.activity-switcher span {
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.activity-switcher select {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: #fbfdfb;
+  font-weight: 800;
+}
+
+.activity-switcher-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.activity-switcher button {
+  min-height: 34px;
+  border: 1px solid #bfe5cc;
+  border-radius: 8px;
+  color: var(--green-dark);
+  background: #edf8f1;
+  font-weight: 900;
+}
+
+.activity-switcher small {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .admin-nav {
   display: block;
   width: 100%;
@@ -2791,6 +2849,38 @@ tbody tr.is-selected {
   color: var(--muted);
   font-size: 13px;
   line-height: 1.55;
+}
+
+.admin-record-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.admin-record-actions button {
+  border: 1px solid #d5e2da;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: var(--green-dark);
+  background: #f7fbf8;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-record-actions button.danger {
+  border-color: #f0caca;
+  color: #b42318;
+  background: #fff7f5;
+}
+
+.admin-record-actions small {
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .timeline {
