@@ -301,6 +301,7 @@ let joinAutoScrollInternal = false;
 let activeLeadFilter = "全部访客";
 let selectedCrmEntryKey = "";
 let latestPublishedAt = "";
+let adminAuthenticated = !isAdminPreview;
 
 function loadState() {
   try {
@@ -437,10 +438,17 @@ function getPublishSnapshot() {
 
 async function fetchPublishedState() {
   if (window.location.protocol === "file:") return null;
-  const endpoints = ["/api/state", "./data/published-state.json"];
+  const endpoints = isAdminPreview ? ["/api/state"] : ["/api/state", "./data/published-state.json"];
   for (const endpoint of endpoints) {
     try {
-      const response = await fetch(`${endpoint}${endpoint.includes("?") ? "&" : "?"}t=${Date.now()}`, { cache: "no-store" });
+      const response = await fetch(`${endpoint}${endpoint.includes("?") ? "&" : "?"}t=${Date.now()}`, {
+        cache: "no-store",
+        credentials: "same-origin"
+      });
+      if (isAdminPreview && response.status === 401) {
+        adminAuthenticated = false;
+        return null;
+      }
       if (!response.ok) continue;
       const snapshot = await response.json();
       if (snapshot?.activity) return snapshot;
@@ -453,7 +461,7 @@ async function fetchPublishedState() {
 
 async function postJsonSafeGet(endpoint) {
   try {
-    const response = await fetch(endpoint, { cache: "no-store" });
+    const response = await fetch(endpoint, { cache: "no-store", credentials: "same-origin" });
     if (!response.ok) return null;
     return await response.json();
   } catch {
@@ -461,7 +469,48 @@ async function postJsonSafeGet(endpoint) {
   }
 }
 
+async function checkAdminSession() {
+  if (!isAdminPreview) return true;
+  const session = await postJsonSafeGet("/api/admin/session");
+  adminAuthenticated = Boolean(session?.authenticated);
+  return adminAuthenticated;
+}
+
+async function loginAdmin(password) {
+  const response = await fetch("/api/admin/login", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: JSON.stringify({ password })
+  });
+  if (!response.ok) return false;
+  const result = await response.json();
+  adminAuthenticated = Boolean(result?.authenticated);
+  return adminAuthenticated;
+}
+
+async function logoutAdmin() {
+  await fetch("/api/admin/logout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
+    body: "{}"
+  });
+  adminAuthenticated = false;
+  renderAdminAuthGate();
+}
+
+async function unlockAdmin(password) {
+  const ok = await loginAdmin(password);
+  if (!ok) return false;
+  await hydratePublishedState();
+  renderAdminAuthGate();
+  renderAll();
+  return true;
+}
+
 async function hydratePublishedState() {
+  if (isAdminPreview && !adminAuthenticated) return;
   const hasLocalDraft = Boolean(localStorage.getItem(STORAGE_KEY));
   const snapshot = await fetchPublishedState();
   if (!snapshot) return;
@@ -495,7 +544,8 @@ async function postJson(endpoint, payload, options = {}) {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
-      keepalive: Boolean(options.keepalive)
+      keepalive: Boolean(options.keepalive),
+      credentials: "same-origin"
     });
     if (!response.ok) throw new Error("request failed");
     return await response.json();
@@ -562,12 +612,18 @@ async function publishState() {
     const response = await fetch("/api/state", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify(getPublishSnapshot())
     });
+    if (response.status === 401) {
+      adminAuthenticated = false;
+      renderAdminAuthGate();
+      throw new Error("admin login required");
+    }
     if (!response.ok) throw new Error("publish failed");
     showToast("已发布，家长端刷新后生效");
   } catch {
-    showToast("已保存到本机；手机生效需使用发布服务");
+    showToast(adminAuthenticated ? "已保存到本机；手机生效需使用发布服务" : "请先登录后台");
   } finally {
     if (button) {
       button.disabled = false;
@@ -3015,6 +3071,57 @@ function bindGeneratedChannelButtons() {
   });
 }
 
+function renderAdminAuthGate() {
+  if (!isAdminPreview) return;
+  let gate = document.querySelector("#adminAuthGate");
+  document.documentElement.classList.toggle("admin-locked", !adminAuthenticated);
+  if (adminAuthenticated) {
+    gate?.remove();
+    return;
+  }
+  if (!gate) {
+    gate = document.createElement("div");
+    gate.id = "adminAuthGate";
+    gate.className = "admin-auth-gate";
+    gate.innerHTML = `
+      <form class="admin-auth-card" id="adminAuthForm">
+        <span class="admin-auth-badge">管理端</span>
+        <h2>请输入后台密码</h2>
+        <p>登录后才能查看客户 CRM、微信授权信息和导出数据。</p>
+        <label>
+          <span>后台密码</span>
+          <input id="adminPasswordInput" type="password" autocomplete="current-password" placeholder="请输入后台密码" />
+        </label>
+        <button type="submit">进入后台</button>
+        <small id="adminAuthHint">服务器密码文件：/www/apply-system/data/.admin-password</small>
+      </form>
+    `;
+    document.body.appendChild(gate);
+    gate.querySelector("#adminAuthForm").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const input = gate.querySelector("#adminPasswordInput");
+      const button = gate.querySelector("button");
+      const hint = gate.querySelector("#adminAuthHint");
+      const password = input.value.trim();
+      if (!password) {
+        hint.textContent = "请先输入后台密码";
+        input.focus();
+        return;
+      }
+      button.disabled = true;
+      button.textContent = "验证中";
+      const ok = await unlockAdmin(password);
+      if (!ok) {
+        hint.textContent = "密码不正确，请重新输入";
+        input.select();
+        button.disabled = false;
+        button.textContent = "进入后台";
+      }
+    });
+  }
+  setTimeout(() => gate.querySelector("#adminPasswordInput")?.focus(), 50);
+}
+
 function bindChrome() {
   document.querySelectorAll(".tab-button").forEach((button) => {
     button.addEventListener("click", () => {
@@ -3310,6 +3417,8 @@ function bindChrome() {
 }
 
 function renderAll() {
+  renderAdminAuthGate();
+  if (isAdminPreview && !adminAuthenticated) return;
   state.currentSource = readCurrentSource();
   if (state.sourceVisitRecorded !== state.currentSource.key) {
     const channel = ensureChannelForSource(state.currentSource);
@@ -3341,7 +3450,7 @@ function renderAll() {
   configureWechatShareCard();
 }
 
-hydratePublishedState().finally(() => {
+checkAdminSession().then(() => hydratePublishedState()).finally(() => {
   bindChrome();
   renderAll();
   ensureWechatAuthorization();

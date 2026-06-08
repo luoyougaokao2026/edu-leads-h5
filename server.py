@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 import copy
 import hashlib
+import hmac
 import json
 import os
+import secrets
+import string
 import time
+from http.cookies import SimpleCookie
 try:
     from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 except ImportError:
@@ -23,6 +27,9 @@ SERVER_PORT = int(os.environ.get("PORT", "4173").strip() or "4173")
 STATE_LOCK = RLock()
 SYSTEM_AVATAR_COUNT = 60
 SYSTEM_AVATAR_BASE_COUNT = 24
+ADMIN_PASSWORD_FILE = ROOT / "data" / ".admin-password"
+ADMIN_SESSION_COOKIE = "apply_admin_session"
+ADMIN_SESSION_SECONDS = int(os.environ.get("APPLY_ADMIN_SESSION_SECONDS", "43200").strip() or "43200")
 WECHAT_APP_ID = os.environ.get("WECHAT_APP_ID", "").strip()
 WECHAT_APP_SECRET = os.environ.get("WECHAT_APP_SECRET", "").strip()
 WECHAT_AUTH_ENABLED = os.environ.get("WECHAT_AUTH_ENABLED", "").strip() == "1"
@@ -111,6 +118,92 @@ def request_host(handler):
 def is_admin_state_request(handler):
     host = request_host(handler)
     return host in {"apply-admin.xdianping.cn", "127.0.0.1", "localhost", "::1"}
+
+
+def get_admin_password():
+    env_password = (
+        os.environ.get("APPLY_ADMIN_PASSWORD", "").strip()
+        or os.environ.get("ADMIN_PASSWORD", "").strip()
+    )
+    if env_password:
+        return env_password
+    if ADMIN_PASSWORD_FILE.exists():
+        password = ADMIN_PASSWORD_FILE.read_text(encoding="utf-8").strip()
+        if password:
+            return password
+    alphabet = string.ascii_letters + string.digits
+    password = "".join(secrets.choice(alphabet) for _ in range(16))
+    ADMIN_PASSWORD_FILE.parent.mkdir(parents=True, exist_ok=True)
+    ADMIN_PASSWORD_FILE.write_text(password + "\n", encoding="utf-8")
+    try:
+        ADMIN_PASSWORD_FILE.chmod(0o600)
+    except OSError:
+        pass
+    return password
+
+
+def admin_session_secret():
+    configured = os.environ.get("APPLY_ADMIN_SESSION_SECRET", "").strip()
+    if configured:
+        return configured
+    raw = f"{get_admin_password()}:{WECHAT_APP_SECRET}:{ROOT}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def sign_admin_session(timestamp):
+    return hmac.new(
+        admin_session_secret().encode("utf-8"),
+        timestamp.encode("utf-8"),
+        hashlib.sha256
+    ).hexdigest()
+
+
+def make_admin_session_token():
+    timestamp = str(int(time.time()))
+    return f"{timestamp}:{sign_admin_session(timestamp)}"
+
+
+def read_cookie(handler, name):
+    cookie_header = handler.headers.get("Cookie", "")
+    if not cookie_header:
+        return ""
+    cookie = SimpleCookie()
+    try:
+        cookie.load(cookie_header)
+    except Exception:
+        return ""
+    morsel = cookie.get(name)
+    return morsel.value if morsel else ""
+
+
+def is_admin_authenticated(handler):
+    token = read_cookie(handler, ADMIN_SESSION_COOKIE)
+    if not token or ":" not in token:
+        return False
+    timestamp, signature = token.split(":", 1)
+    try:
+        age = int(time.time()) - int(timestamp)
+    except ValueError:
+        return False
+    if age < 0 or age > ADMIN_SESSION_SECONDS:
+        return False
+    expected = sign_admin_session(timestamp)
+    return hmac.compare_digest(signature, expected)
+
+
+def admin_cookie_header(token):
+    parts = [
+        f"{ADMIN_SESSION_COOKIE}={token}",
+        "Path=/",
+        "HttpOnly",
+        "SameSite=Lax",
+        f"Max-Age={ADMIN_SESSION_SECONDS}"
+    ]
+    return "; ".join(parts)
+
+
+def expired_admin_cookie_header():
+    return f"{ADMIN_SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0"
 
 
 def public_wechat_config():
@@ -590,6 +683,15 @@ class Handler(SimpleHTTPRequestHandler):
         if current_route == "/api/state":
             self.send_json_state()
             return
+        if current_route == "/data/published-state.json":
+            self.send_json_state()
+            return
+        if current_route.startswith("/data/"):
+            self.send_error(404)
+            return
+        if current_route == "/api/admin/session":
+            self.send_json({"ok": True, "authenticated": is_admin_authenticated(self)})
+            return
         if current_route == "/api/wechat/config":
             self.send_json(public_wechat_config())
             return
@@ -645,10 +747,23 @@ class Handler(SimpleHTTPRequestHandler):
 
             with STATE_LOCK:
                 if path == "/api/state":
+                    if not is_admin_authenticated(self):
+                        self.send_json({"ok": False, "error": "admin login required"}, status=401)
+                        return
                     if not isinstance(payload.get("activity"), dict):
                         raise ValueError("invalid state payload")
                     write_state(payload)
                     result = {"ok": True}
+                elif path == "/api/admin/login":
+                    password = str(payload.get("password") or "")
+                    if not password or not hmac.compare_digest(password, get_admin_password()):
+                        self.send_json({"ok": False, "error": "invalid password"}, status=401)
+                        return
+                    self.send_admin_login_response()
+                    return
+                elif path == "/api/admin/logout":
+                    self.send_admin_logout_response()
+                    return
                 elif path == "/api/lead":
                     state = read_state()
                     result = add_lead_submission(state, payload)
@@ -706,17 +821,38 @@ window.location.replace({safe_redirect});
         self.end_headers()
         self.wfile.write(json.dumps(payload, ensure_ascii=False).encode("utf-8"))
 
+    def send_admin_login_response(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Set-Cookie", admin_cookie_header(make_admin_session_token()))
+        self.end_headers()
+        self.wfile.write(json.dumps({"ok": True, "authenticated": True}, ensure_ascii=False).encode("utf-8"))
+
+    def send_admin_logout_response(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Set-Cookie", expired_admin_cookie_header())
+        self.end_headers()
+        self.wfile.write(json.dumps({"ok": True, "authenticated": False}, ensure_ascii=False).encode("utf-8"))
+
     def send_json_state(self):
         if not STATE_FILE.exists():
             self.send_error(404)
             return
         with STATE_LOCK:
             state = read_state()
-        payload = state if is_admin_state_request(self) else public_state_snapshot(state)
+        if is_admin_state_request(self):
+            if not is_admin_authenticated(self):
+                self.send_json({"ok": False, "error": "admin login required"}, status=401)
+                return
+            payload = state
+        else:
+            payload = public_state_snapshot(state)
         self.send_json(payload)
 
 
 if __name__ == "__main__":
+    get_admin_password()
     server = ThreadingHTTPServer((SERVER_HOST, SERVER_PORT), Handler)
     print(f"Serving with publish API at http://{SERVER_HOST}:{SERVER_PORT}")
     server.serve_forever()

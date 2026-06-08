@@ -3754,6 +3754,91 @@ tbody tr.is-selected {
   transform: translate(-50%, 0);
 }
 
+.admin-auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(29, 185, 84, 0.14), transparent 34%),
+    rgba(244, 247, 244, 0.92);
+  backdrop-filter: blur(10px);
+}
+
+.admin-auth-card {
+  width: min(420px, calc(100vw - 36px));
+  padding: 30px;
+  border: 1px solid rgba(18, 77, 43, 0.1);
+  border-radius: 14px;
+  background: white;
+  box-shadow: 0 24px 70px rgba(17, 41, 28, 0.16);
+}
+
+.admin-auth-badge {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  color: var(--green);
+  background: rgba(29, 185, 84, 0.09);
+  font-size: 13px;
+  font-weight: 900;
+}
+
+.admin-auth-card h2 {
+  margin: 16px 0 8px;
+  font-size: 26px;
+  letter-spacing: 0;
+}
+
+.admin-auth-card p,
+.admin-auth-card small {
+  color: var(--muted);
+}
+
+.admin-auth-card label {
+  display: grid;
+  gap: 8px;
+  margin-top: 22px;
+  font-weight: 900;
+}
+
+.admin-auth-card input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+  outline: none;
+}
+
+.admin-auth-card input:focus {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(29, 185, 84, 0.12);
+}
+
+.admin-auth-card button {
+  width: 100%;
+  height: 48px;
+  margin: 18px 0 12px;
+  border: 0;
+  border-radius: 8px;
+  color: white;
+  background: linear-gradient(135deg, #16a34a, #0f8f3a);
+  font: inherit;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.admin-auth-card button:disabled {
+  cursor: wait;
+  opacity: 0.72;
+}
+
 .hide-stats .stats-band,
 .hide-recent-joins .join-list,
 .hide-full-list [data-open-panel="allJoins"] {
