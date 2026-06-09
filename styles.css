@@ -2267,8 +2267,7 @@ h1 {
 }
 
 .activity-switcher label,
-.activity-switcher span,
-.activity-switcher small {
+.activity-switcher span {
   display: block;
 }
 
@@ -2305,13 +2304,39 @@ h1 {
   font-weight: 900;
 }
 
-.activity-switcher small {
+.activity-link-card {
+  display: grid;
+  gap: 7px;
+  padding: 9px;
+  border: 1px solid #dfe9e3;
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.activity-link-card span {
+  margin: 0;
+}
+
+.activity-link-card code {
+  display: block;
+  max-height: 42px;
   overflow: hidden;
-  color: var(--muted);
+  color: #32483b;
   font-size: 11px;
   line-height: 1.35;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+}
+
+.activity-link-card div {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.activity-link-card button:first-child {
+  color: white;
+  border-color: var(--green);
+  background: var(--green);
 }
 
 .activity-created-dialog {

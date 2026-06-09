@@ -531,6 +531,7 @@ function renderActivitySwitcher() {
   const options = (activityCatalog.length ? activityCatalog : [{ slug: activeActivitySlug, title: state.activity.adminName || state.activity.title }])
     .map((item) => `<option value="${item.slug}" ${item.slug === activeActivitySlug ? "selected" : ""}>${item.title || item.slug}</option>`)
     .join("");
+  const publicUrl = getPublicActivityUrl();
   switcher.innerHTML = `
     <label>
       <span>当前活动</span>
@@ -540,7 +541,14 @@ function renderActivitySwitcher() {
       <button type="button" id="createActivityButton">新建活动</button>
       <button type="button" id="clearActivityDataButton">清空数据</button>
     </div>
-    <small>家长端：${getPublicActivityUrl()}</small>
+    <div class="activity-link-card">
+      <span>家长端链接</span>
+      <code>${publicUrl}</code>
+      <div>
+        <button type="button" data-copy-activity-link="${publicUrl}">复制链接</button>
+        <button type="button" data-open-activity-link="${publicUrl}">打开预览</button>
+      </div>
+    </div>
   `;
 }
 
@@ -3414,6 +3422,32 @@ function bindChrome() {
     }
     if (event.target.closest("#clearActivityDataButton")) {
       clearCurrentActivityData();
+      return;
+    }
+    const copyActivityLink = event.target.closest("[data-copy-activity-link]");
+    if (copyActivityLink) {
+      const value = copyActivityLink.dataset.copyActivityLink;
+      if (!navigator.clipboard?.writeText) {
+        showToast(value);
+        return;
+      }
+      navigator.clipboard
+        .writeText(value)
+        .then(() => {
+          copyActivityLink.textContent = "已复制";
+          showToast("家长端链接已复制");
+          window.setTimeout(() => {
+            copyActivityLink.textContent = "复制链接";
+          }, 1800);
+        })
+        .catch(() => {
+          showToast(value);
+        });
+      return;
+    }
+    const openActivityLink = event.target.closest("[data-open-activity-link]");
+    if (openActivityLink) {
+      window.open(openActivityLink.dataset.openActivityLink, "_blank", "noopener");
       return;
     }
     if (event.target.closest("[data-close-activity-dialog]")) {
