@@ -2314,6 +2314,120 @@ h1 {
   white-space: nowrap;
 }
 
+.activity-created-dialog {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.activity-created-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(12, 22, 17, 0.46);
+  backdrop-filter: blur(5px);
+}
+
+.activity-created-card {
+  position: relative;
+  z-index: 1;
+  width: min(440px, 100%);
+  padding: 22px;
+  border: 1px solid rgba(197, 214, 204, 0.9);
+  border-radius: 12px;
+  background: white;
+  box-shadow: 0 24px 70px rgba(16, 34, 24, 0.22);
+}
+
+.activity-created-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 50%;
+  color: var(--muted);
+  background: #f2f5f3;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.activity-created-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  color: var(--green-dark);
+  background: #eaf7ef;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.activity-created-card h2 {
+  margin: 14px 34px 6px 0;
+  color: var(--ink);
+  font-size: 22px;
+  line-height: 1.25;
+}
+
+.activity-created-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.activity-created-link {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fbfdfb;
+}
+
+.activity-created-link span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.activity-created-link code {
+  overflow-wrap: anywhere;
+  color: #143d26;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.activity-created-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.activity-created-actions button {
+  min-height: 40px;
+  border: 1px solid #bfe5cc;
+  border-radius: 8px;
+  color: var(--green-dark);
+  background: #edf8f1;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.activity-created-actions button:first-child {
+  color: white;
+  border-color: var(--green);
+  background: var(--green);
+}
+
 .admin-nav {
   display: block;
   width: 100%;

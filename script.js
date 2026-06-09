@@ -578,6 +578,39 @@ async function createNewActivity() {
   }
   if (Array.isArray(result.activities)) activityCatalog = result.activities;
   await switchActivity(result.activity.slug);
+  showActivityCreatedDialog(result.activity);
+}
+
+function closeActivityCreatedDialog() {
+  document.querySelector("#activityCreatedDialog")?.remove();
+}
+
+function showActivityCreatedDialog(activity = {}) {
+  if (!isAdminPreview) return;
+  const slug = normalizeActivitySlug(activity.slug || activeActivitySlug);
+  const publicUrl = getPublicActivityUrl(slug);
+  closeActivityCreatedDialog();
+  const dialog = document.createElement("div");
+  dialog.id = "activityCreatedDialog";
+  dialog.className = "activity-created-dialog";
+  dialog.innerHTML = `
+    <div class="activity-created-backdrop" data-close-activity-dialog></div>
+    <section class="activity-created-card" role="dialog" aria-modal="true" aria-labelledby="activityCreatedTitle">
+      <button type="button" class="activity-created-close" data-close-activity-dialog aria-label="关闭">×</button>
+      <span class="activity-created-badge">新活动已创建</span>
+      <h2 id="activityCreatedTitle">${activity.title || activity.adminName || state.activity.title || "资料领取活动"}</h2>
+      <p>家长端链接已经生成，可以直接复制发给家长或打开预览。</p>
+      <div class="activity-created-link">
+        <span>家长端链接</span>
+        <code>${publicUrl}</code>
+      </div>
+      <div class="activity-created-actions">
+        <button type="button" data-copy-created-link="${publicUrl}">复制链接</button>
+        <button type="button" data-open-created-link="${publicUrl}">打开预览</button>
+      </div>
+    </section>
+  `;
+  document.body.appendChild(dialog);
 }
 
 async function clearCurrentActivityData() {
@@ -3381,6 +3414,33 @@ function bindChrome() {
     }
     if (event.target.closest("#clearActivityDataButton")) {
       clearCurrentActivityData();
+      return;
+    }
+    if (event.target.closest("[data-close-activity-dialog]")) {
+      closeActivityCreatedDialog();
+      return;
+    }
+    const copyCreatedLink = event.target.closest("[data-copy-created-link]");
+    if (copyCreatedLink) {
+      const value = copyCreatedLink.dataset.copyCreatedLink;
+      if (!navigator.clipboard?.writeText) {
+        showToast(value);
+        return;
+      }
+      navigator.clipboard
+        .writeText(value)
+        .then(() => {
+          copyCreatedLink.textContent = "已复制";
+          showToast("家长端链接已复制");
+        })
+        .catch(() => {
+          showToast(value);
+        });
+      return;
+    }
+    const openCreatedLink = event.target.closest("[data-open-created-link]");
+    if (openCreatedLink) {
+      window.open(openCreatedLink.dataset.openCreatedLink, "_blank", "noopener");
       return;
     }
 
