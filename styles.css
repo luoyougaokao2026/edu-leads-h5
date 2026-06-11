@@ -2291,7 +2291,7 @@ h1 {
 
 .activity-switcher-actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 6px;
 }
 
@@ -2337,6 +2337,42 @@ h1 {
   color: white;
   border-color: var(--green);
   background: var(--green);
+}
+
+.activity-danger-box {
+  padding: 8px 0 0;
+  border-top: 1px dashed #d9e2dd;
+}
+
+.activity-danger-box summary {
+  cursor: pointer;
+  color: #6b756f;
+  font-size: 12px;
+  font-weight: 900;
+  list-style-position: inside;
+}
+
+.activity-danger-box p {
+  margin: 8px 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.activity-danger-box button + button {
+  margin-top: 6px;
+}
+
+.activity-danger-box .activity-muted-danger {
+  color: #606a64;
+  border-color: #d6ddd9;
+  background: #f7f8f7;
+}
+
+.activity-danger-box .activity-hard-danger {
+  color: #a92727;
+  border-color: #efb8b8;
+  background: #fff6f6;
 }
 
 .activity-created-dialog {

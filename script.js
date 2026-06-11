@@ -539,7 +539,6 @@ function renderActivitySwitcher() {
     </label>
     <div class="activity-switcher-actions">
       <button type="button" id="createActivityButton">新建活动</button>
-      <button type="button" id="clearActivityDataButton">清空数据</button>
     </div>
     <div class="activity-link-card">
       <span>家长端链接</span>
@@ -549,6 +548,12 @@ function renderActivitySwitcher() {
         <button type="button" data-open-activity-link="${publicUrl}">打开预览</button>
       </div>
     </div>
+    <details class="activity-danger-box">
+      <summary>高级操作</summary>
+      <p>这些操作会影响当前活动，请确认后再使用。</p>
+      <button type="button" class="activity-muted-danger" id="resetActivityConfigButton">重置页面配置</button>
+      <button type="button" class="activity-hard-danger" id="clearActivityDataButton">清空当前活动数据</button>
+    </details>
   `;
 }
 
@@ -626,8 +631,15 @@ async function clearCurrentActivityData() {
     showToast("请先登录后台");
     return;
   }
-  const ok = window.confirm("只清空当前活动的访问、领取、CRM 和分享数据，页面内容会保留。确定清空吗？");
-  if (!ok) return;
+  const confirmText = "清空当前活动数据";
+  const typed = window.prompt(
+    `清空当前活动数据？\n\n这会删除当前活动的访问记录、领取记录、CRM客户、分享关系和近期动态。\n页面内容、资料、标题不会删除。\n\n请输入：${confirmText}`
+  );
+  if (typed === null) return;
+  if (typed !== confirmText) {
+    showToast("未清空：确认文字不一致");
+    return;
+  }
   const result = await postJson(apiWithActivity("/api/activities/reset"), { activitySlug: activeActivitySlug });
   if (!result?.ok) {
     showToast("清空失败，请稍后重试");
@@ -638,6 +650,42 @@ async function clearCurrentActivityData() {
   saveState();
   renderAll();
   showToast("当前活动数据已清空");
+}
+
+function resetActivityConfig() {
+  const ok = window.confirm("确定重置当前活动页面配置吗？\n\n这会恢复标题、文案、名额、资料展示等页面配置。\n客户数据不会删除。");
+  if (!ok) return;
+  state.activity = {
+    tag: "高三数学资料",
+    title: "高三导数专题资料包领取",
+    subtitle: "精选往季保校训练营导数题，进群领取小册子和配套讲解视频。",
+    joinLabel: "已领取",
+    totalQuota: "50",
+    deadline: "2026-06-10T22:00",
+    adminName: "高三导数资料包",
+    contentTitle: "资料预览",
+    contentNote: "题册 + 视频",
+    noticeLeft: "302 位高三学生/家长已领取",
+    ctaText: "立即领取资料",
+    formHint: "为给孩子预留资料，请填写领取信息。",
+    teacherWechat: "math-guide-2026",
+    passphrase: "导数资料",
+    successTitle: "领取预约已提交",
+    successSubtitle: "资料已为孩子预留",
+    successContactText: "老师会尽快联系您确认领取安排。",
+    qrTitle: "长按二维码添加老师",
+    qrSubtitle: "领取题册和讲解视频",
+    teacherQrImage: "",
+    teacherQrFileName: "",
+    shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
+    shareTitle: "高三导数50题精讲资料领取",
+    shareDescription: "领取题册和讲解视频，适合高三二轮查漏补缺。",
+    shareImage: "https://apply.xdianping.cn/assets/daoshu-preview-cover.png",
+    audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
+  };
+  saveState();
+  renderAll();
+  showToast("页面配置已重置");
 }
 
 async function checkAdminSession() {
@@ -3420,6 +3468,10 @@ function bindChrome() {
       createNewActivity();
       return;
     }
+    if (event.target.closest("#resetActivityConfigButton")) {
+      resetActivityConfig();
+      return;
+    }
     if (event.target.closest("#clearActivityDataButton")) {
       clearCurrentActivityData();
       return;
@@ -3676,40 +3728,9 @@ function bindChrome() {
     publishState();
   });
 
-  document.querySelector("#resetActivity")?.addEventListener("click", () => {
-    state.activity = {
-      tag: "高三数学资料",
-      title: "高三导数专题资料包领取",
-      subtitle: "精选往季保校训练营导数题，进群领取小册子和配套讲解视频。",
-      joinLabel: "已领取",
-      totalQuota: "50",
-      deadline: "2026-06-10T22:00",
-      adminName: "高三导数资料包",
-      contentTitle: "资料预览",
-      contentNote: "题册 + 视频",
-      noticeLeft: "302 位高三学生/家长已领取",
-      ctaText: "立即领取资料",
-      formHint: "为给孩子预留资料，请填写领取信息。",
-      teacherWechat: "math-guide-2026",
-      passphrase: "导数资料",
-      successTitle: "领取预约已提交",
-      successSubtitle: "资料已为孩子预留",
-      successContactText: "老师会尽快联系您确认领取安排。",
-      qrTitle: "长按二维码添加老师",
-      qrSubtitle: "领取题册和讲解视频",
-      teacherQrImage: "",
-      teacherQrFileName: "",
-      shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
-      shareTitle: "高三导数50题精讲资料领取",
-      shareDescription: "领取题册和讲解视频，适合高三二轮查漏补缺。",
-      shareImage: "https://apply.xdianping.cn/assets/daoshu-preview-cover.png",
-      audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
-    };
-    saveState();
-    renderActivity();
-  });
-
   document.querySelector("#resetDemoData")?.addEventListener("click", () => {
+    const ok = window.confirm("确定恢复整套演示数据吗？\n\n这会覆盖当前本地演示状态。");
+    if (!ok) return;
     resetState();
     renderAll();
     showToast("已恢复演示数据");
