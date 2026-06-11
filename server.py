@@ -60,8 +60,10 @@ def normalize_activity_slug(value):
 def activity_slug_from_path(path):
     current_route = route(path).strip("/")
     parts = current_route.split("/")
-    if len(parts) >= 2 and parts[0] in {"zhaosheng", "parent", "student"}:
-        return normalize_activity_slug(parts[1])
+    if parts and parts[0] in {"zhaosheng", "parent", "student"}:
+        return normalize_activity_slug(parts[1]) if len(parts) >= 2 else DEFAULT_ACTIVITY_SLUG
+    if len(parts) == 1 and parts[0] and parts[0] not in {"api", "assets", "admin"} and "." not in parts[0]:
+        return normalize_activity_slug(parts[0])
     return DEFAULT_ACTIVITY_SLUG
 
 
@@ -850,6 +852,10 @@ class Handler(SimpleHTTPRequestHandler):
             self.serve_index()
             return
         if current_route.startswith(("/parent/", "/student/", "/zhaosheng/")):
+            self.serve_index()
+            return
+        route_parts = current_route.strip("/").split("/")
+        if len(route_parts) == 1 and route_parts[0] and route_parts[0] not in {"api", "assets"} and "." not in route_parts[0]:
             self.serve_index()
             return
         super().do_GET()

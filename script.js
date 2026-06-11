@@ -6,7 +6,7 @@ const ADMIN_ACTIVITY_KEY = "zhaosheng_admin_activity_slug";
 const DEFAULT_COVER_IMAGE = "/assets/daoshu-preview-cover.png";
 const LEGACY_COVER_IMAGES = ["/assets/luoyou-daoshu-cover.jpg"];
 const TEACHER_QR_IMAGE = "/assets/teacher-qr.svg";
-const PUBLIC_BASE_URL = "https://apply.xdianping.cn/zhaosheng";
+const PUBLIC_BASE_URL = "https://apply.xdianping.cn";
 const SYSTEM_AVATAR_COUNT = 60;
 const SYSTEM_AVATAR_BASE_COUNT = 24;
 const SCHOOL_SUGGESTIONS = [
@@ -53,7 +53,12 @@ function normalizeActivitySlug(value) {
 }
 function readActivitySlugFromPath() {
   const parts = routePath.split("/").filter(Boolean);
-  if (["zhaosheng", "parent", "student"].includes(parts[0]) && parts[1]) return normalizeActivitySlug(parts[1]);
+  if (["zhaosheng", "parent", "student"].includes(parts[0])) {
+    return parts[1] ? normalizeActivitySlug(parts[1]) : DEFAULT_ACTIVITY_SLUG;
+  }
+  if (isApplyPublicHost && parts[0] && !["api", "assets", "admin"].includes(parts[0]) && !parts[0].includes(".")) {
+    return normalizeActivitySlug(parts[0]);
+  }
   return normalizeActivitySlug(urlParams.get("activity") || (isAdminPreview ? localStorage.getItem(ADMIN_ACTIVITY_KEY) : "") || DEFAULT_ACTIVITY_SLUG);
 }
 let activeActivitySlug = readActivitySlugFromPath();
@@ -999,7 +1004,7 @@ const panels = {
 
 function getSharePayload(ref = "page") {
   const shareRef = ref === "page" ? getPersonalShareRef() : ref;
-  const url = new URL(window.location.href);
+  const url = new URL(getPublicActivityUrl(), window.location.origin);
   url.searchParams.delete("source");
   url.searchParams.set("ref", shareRef);
   return {
