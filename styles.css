@@ -4721,6 +4721,21 @@ tbody tr.is-selected {
   padding-bottom: max(20px, env(safe-area-inset-bottom));
 }
 
+html.public-page .admin-stage,
+html.public-page .admin-shell,
+html.public-page [aria-label="后台管理"] {
+  display: none !important;
+}
+
+html.public-page .phone-stage {
+  display: block !important;
+}
+
+html.public-page .workspace {
+  display: block !important;
+  grid-template-columns: none !important;
+}
+
 .public-page .content-preview-card.is-media-card .material-thumb {
   height: clamp(220px, 64vw, 300px);
   max-height: none;
