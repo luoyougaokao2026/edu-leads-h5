@@ -1460,10 +1460,10 @@ h1 {
 }
 
 .public-page .content-preview-card.is-media-card .material-thumb {
-  height: clamp(220px, 64vw, 300px);
+  height: auto;
   max-height: none;
-  object-fit: contain;
-  object-position: center center;
+  object-fit: cover;
+  object-position: center top;
   background: white;
 }
 
@@ -4737,9 +4737,9 @@ html.public-page .workspace {
 }
 
 .public-page .content-preview-card.is-media-card .material-thumb {
-  height: clamp(220px, 64vw, 300px);
+  height: auto;
   max-height: none;
-  object-fit: contain;
-  object-position: center center;
+  object-fit: cover;
+  object-position: center top;
   background: white;
 }
