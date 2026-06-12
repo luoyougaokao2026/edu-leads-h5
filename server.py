@@ -116,7 +116,7 @@ def ensure_state_shape(state):
 
 def public_join(item):
     public = {}
-    for key in ["id", "name", "source", "time", "avatar", "avatarColor", "avatarUrl"]:
+    for key in ["id", "name", "grade", "subject", "school", "source", "time", "avatar", "avatarColor", "avatarUrl"]:
         if key in item:
             public[key] = item.get(key)
     return public
@@ -730,6 +730,9 @@ def add_lead_submission(state, payload):
     incoming_join.update({
         "id": next_id,
         "name": name,
+        "grade": incoming_lead.get("grade") or incoming_join.get("grade", ""),
+        "subject": incoming_lead.get("subject") or incoming_join.get("subject", ""),
+        "school": incoming_lead.get("school") or incoming_join.get("school", ""),
         "source": source_name,
         "time": "刚刚",
         "avatar": name[0],
