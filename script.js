@@ -4,6 +4,7 @@ const WECHAT_IDENTITY_KEY = "zhaosheng_wechat_identity_v1";
 const DEFAULT_ACTIVITY_SLUG = "daoshu";
 const ADMIN_ACTIVITY_KEY = "zhaosheng_admin_activity_slug";
 const DEFAULT_COVER_IMAGE = "/assets/daoshu-preview-cover.png";
+const DEFAULT_SHARE_IMAGE = "https://apply.xdianping.cn/assets/share-target.jpg";
 const LEGACY_COVER_IMAGES = ["/assets/luoyou-daoshu-cover.jpg"];
 const TEACHER_QR_IMAGE = "/assets/teacher-qr.svg";
 const PUBLIC_BASE_URL = "https://apply.xdianping.cn";
@@ -129,7 +130,7 @@ const defaultState = {
     shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
     shareTitle: "高三导数50题精讲资料领取",
     shareDescription: "领取题册和讲解视频，适合高三二轮查漏补缺。",
-    shareImage: "https://apply.xdianping.cn/assets/daoshu-preview-cover.png",
+    shareImage: DEFAULT_SHARE_IMAGE,
     audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
   },
   followStatuses: ["新领取", "已加微信", "已进群", "已发资料", "已互动", "有训练营意向", "已报名", "无效"],
@@ -685,7 +686,7 @@ function resetActivityConfig() {
     shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
     shareTitle: "高三导数50题精讲资料领取",
     shareDescription: "领取题册和讲解视频，适合高三二轮查漏补缺。",
-    shareImage: "https://apply.xdianping.cn/assets/daoshu-preview-cover.png",
+    shareImage: DEFAULT_SHARE_IMAGE,
     audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
   };
   saveState();
@@ -1023,12 +1024,12 @@ function getShareDescription() {
 }
 
 function getShareImageUrl() {
-  const source = state.activity.shareImage || "https://apply.xdianping.cn/assets/daoshu-preview-cover.png";
-  if (/^data:/i.test(source)) return "https://apply.xdianping.cn/assets/daoshu-preview-cover.png";
+  const source = state.activity.shareImage || DEFAULT_SHARE_IMAGE;
+  if (/^data:/i.test(source)) return DEFAULT_SHARE_IMAGE;
   try {
     return new URL(source, window.location.origin).toString();
   } catch {
-    return "https://apply.xdianping.cn/assets/daoshu-preview-cover.png";
+    return DEFAULT_SHARE_IMAGE;
   }
 }
 
