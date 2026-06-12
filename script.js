@@ -2238,21 +2238,80 @@ function updateMaterialFromControl(input) {
   renderMaterialsPreview();
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImageFromDataUrl(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = dataUrl;
+  });
+}
+
+async function prepareImageUpload(file) {
+  const originalDataUrl = await readFileAsDataUrl(file);
+  if (file.size <= 820 * 1024) {
+    return {
+      dataUrl: originalDataUrl,
+      fileName: file.name,
+      mimeType: file.type || "image/jpeg"
+    };
+  }
+
+  const image = await loadImageFromDataUrl(originalDataUrl);
+  const maxSide = 1200;
+  const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+  const context = canvas.getContext("2d");
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  let quality = 0.86;
+  let dataUrl = canvas.toDataURL("image/jpeg", quality);
+  while (dataUrl.length > 650 * 1024 && quality > 0.56) {
+    quality -= 0.08;
+    dataUrl = canvas.toDataURL("image/jpeg", quality);
+  }
+
+  return {
+    dataUrl,
+    fileName: file.name.replace(/\.[^.]+$/, "") + "-h5.jpg",
+    mimeType: "image/jpeg"
+  };
+}
+
 function uploadMaterialFile(input) {
   const material = state.materials[Number(input.dataset.uploadMaterial)];
   const file = input.files?.[0];
   if (!material || !file) return;
-  const maxSize = 5 * 1024 * 1024;
+  const isImage = file.type.startsWith("image/");
+  const maxSize = isImage ? 12 * 1024 * 1024 : 5 * 1024 * 1024;
   if (file.size > maxSize) {
-    showToast("原型阶段请先上传 5MB 以内文件");
+    showToast(isImage ? "图片请控制在 12MB 以内" : "原型阶段请先上传 5MB 以内文件");
     input.value = "";
     return;
   }
-  const reader = new FileReader();
-  reader.onload = () => {
+  const finishUpload = async () => {
+    const prepared = isImage
+      ? await prepareImageUpload(file)
+      : {
+          dataUrl: await readFileAsDataUrl(file),
+          fileName: file.name,
+          mimeType: file.type
+        };
     material.fileName = file.name;
-    material.mimeType = file.type;
-    material.fileData = String(reader.result || "");
+    material.mimeType = prepared.mimeType;
+    material.fileData = prepared.dataUrl;
+    if (isImage) material.fileName = prepared.fileName;
     if (file.type.startsWith("image/")) material.type = "图片";
     if (file.type.startsWith("video/")) material.type = "视频";
     if (file.type.startsWith("audio/")) material.type = "语音";
@@ -2260,10 +2319,13 @@ function uploadMaterialFile(input) {
     saveState();
     renderMaterials();
     renderMaterialsPreview();
-    publishState();
-    showToast("文件已加入资料内容");
+    await publishState();
+    showToast(isImage ? "图片已压缩并发布" : "文件已加入资料内容");
   };
-  reader.readAsDataURL(file);
+  finishUpload().catch(() => {
+    showToast("文件读取失败，请换一张图片重试");
+    input.value = "";
+  });
 }
 
 function uploadActivityImage(input) {

@@ -128,7 +128,7 @@ def public_channel(item):
 
 def public_material(item):
     public = {}
-    for key in ["type", "title", "description", "body", "teaserText", "url", "fileName", "mimeType", "visibility"]:
+    for key in ["type", "title", "description", "body", "teaserText", "url", "fileName", "mimeType", "fileData", "visibility"]:
         if key in item:
             public[key] = item.get(key)
     return public
