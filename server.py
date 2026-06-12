@@ -2,8 +2,10 @@
 import copy
 import hashlib
 import hmac
+import html
 import json
 import os
+import re
 import secrets
 import string
 import time
@@ -24,6 +26,8 @@ ROOT = Path(__file__).resolve().parent
 STATE_FILE = ROOT / "data" / "published-state.json"
 ACTIVITIES_DIR = ROOT / "data" / "activities"
 DEFAULT_ACTIVITY_SLUG = "daoshu"
+DEFAULT_SHARE_DESCRIPTION = "50道高三数学精选导数题 源自靶向刷题集训营"
+DEFAULT_SHARE_IMAGE = "https://apply.xdianping.cn/assets/share-target.jpg"
 SERVER_HOST = os.environ.get("HOST", "127.0.0.1").strip() or "127.0.0.1"
 SERVER_PORT = int(os.environ.get("PORT", "4173").strip() or "4173")
 STATE_LOCK = RLock()
@@ -421,6 +425,52 @@ def request_origin(handler):
     return f"{scheme}://{host}"
 
 
+def absolute_share_url(value, origin):
+    text = str(value or "").strip()
+    if not text or text.lower().startswith("data:"):
+        return DEFAULT_SHARE_IMAGE
+    if text.startswith("//"):
+        scheme = origin.split("://", 1)[0]
+        return f"{scheme}:{text}"
+    if text.startswith(("http://", "https://")):
+        return text
+    return f"{origin.rstrip('/')}/{text.lstrip('/')}"
+
+
+def replace_meta_content(markup, selector, content):
+    escaped = html.escape(str(content or ""), quote=True)
+    pattern = rf'(<meta\s+{selector}\s+content=")[^"]*(")'
+    return re.sub(pattern, rf"\g<1>{escaped}\2", markup, flags=re.IGNORECASE | re.DOTALL)
+
+
+def render_index_with_share_meta(handler):
+    index_path = ROOT / "index.html"
+    markup = index_path.read_text(encoding="utf-8")
+    origin = request_origin(handler)
+    slug = activity_slug_from_path(handler.path)
+    state = ensure_state_shape(read_state(slug))
+    activity = state.get("activity", {})
+    title = activity.get("shareTitle") or activity.get("title") or "高三导数50题精讲资料领取"
+    description = activity.get("shareDescription") or DEFAULT_SHARE_DESCRIPTION
+    image = absolute_share_url(activity.get("shareImage"), origin)
+    page_path = route(handler.path) or "/"
+    page_url = f"{origin.rstrip('/')}{page_path if page_path.startswith('/') else '/' + page_path}"
+
+    markup = re.sub(
+        r"<title>.*?</title>",
+        f"<title>{html.escape(str(title), quote=False)}</title>",
+        markup,
+        count=1,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    markup = replace_meta_content(markup, r'name="description"', description)
+    markup = replace_meta_content(markup, r'property="og:title"', title)
+    markup = replace_meta_content(markup, r'property="og:description"', description)
+    markup = replace_meta_content(markup, r'property="og:image"', image)
+    markup = replace_meta_content(markup, r'property="og:url"', page_url)
+    return markup
+
+
 def exchange_wechat_code(code):
     if not WECHAT_APP_ID or not WECHAT_APP_SECRET:
         raise ValueError("wechat app id or secret missing")
@@ -795,8 +845,12 @@ class Handler(SimpleHTTPRequestHandler):
         super().end_headers()
 
     def serve_index(self):
-        self.path = "/index.html"
-        super().do_GET()
+        markup = render_index_with_share_meta(self).encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(markup)))
+        self.end_headers()
+        self.wfile.write(markup)
 
     def do_GET(self):
         current_route = route(self.path)
