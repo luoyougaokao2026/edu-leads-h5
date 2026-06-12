@@ -5,6 +5,7 @@ const DEFAULT_ACTIVITY_SLUG = "daoshu";
 const ADMIN_ACTIVITY_KEY = "zhaosheng_admin_activity_slug";
 const DEFAULT_COVER_IMAGE = "/assets/daoshu-preview-cover.png";
 const DEFAULT_SHARE_IMAGE = "https://apply.xdianping.cn/assets/share-target.jpg";
+const DEFAULT_SHARE_DESCRIPTION = "50道高三数学精选导数题，源自靶向刷题集训营。";
 const LEGACY_COVER_IMAGES = ["/assets/luoyou-daoshu-cover.jpg"];
 const TEACHER_QR_IMAGE = "/assets/teacher-qr.svg";
 const PUBLIC_BASE_URL = "https://apply.xdianping.cn";
@@ -129,7 +130,7 @@ const defaultState = {
     teacherQrFileName: "",
     shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
     shareTitle: "高三导数50题精讲资料领取",
-    shareDescription: "领取题册和讲解视频，适合高三二轮查漏补缺。",
+    shareDescription: DEFAULT_SHARE_DESCRIPTION,
     shareImage: DEFAULT_SHARE_IMAGE,
     audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
   },
@@ -685,7 +686,7 @@ function resetActivityConfig() {
     teacherQrFileName: "",
     shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
     shareTitle: "高三导数50题精讲资料领取",
-    shareDescription: "领取题册和讲解视频，适合高三二轮查漏补缺。",
+    shareDescription: DEFAULT_SHARE_DESCRIPTION,
     shareImage: DEFAULT_SHARE_IMAGE,
     audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
   };
@@ -1020,7 +1021,7 @@ function getShareTitle() {
 }
 
 function getShareDescription() {
-  return state.activity.shareDescription || "领取题册和讲解视频，适合高三二轮查漏补缺。";
+  return state.activity.shareDescription || DEFAULT_SHARE_DESCRIPTION;
 }
 
 function getShareImageUrl() {
