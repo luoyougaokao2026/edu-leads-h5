@@ -1076,14 +1076,26 @@ h1 {
 }
 
 .pickup-location-card b,
+.pickup-location-card strong,
 .pickup-location-card small {
   display: block;
+}
+
+.pickup-location-card strong {
+  margin-top: 3px;
+  color: #17241b;
+  font-size: 18px;
+  font-weight: 900;
 }
 
 .pickup-location-card small {
   margin-top: 4px;
   color: #7c8580;
   font-size: 12px;
+}
+
+.priority-delivery-field {
+  margin-top: -2px;
 }
 
 .inline-card-head {

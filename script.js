@@ -2880,6 +2880,23 @@ function renderSchoolInput() {
 function renderDeliveryInfoForm(method = "到校自提") {
   const copy = deliveryMethodCopy(method);
   const needsAddress = method === "包邮到家";
+  const priorityBlock = needsAddress
+    ? `<label class="smart-field priority-delivery-field">
+        收件地址
+        <span class="input-shell textarea-shell">
+          <span class="field-icon field-icon-location" aria-hidden="true"></span>
+          <textarea name="address" rows="3" maxlength="200" placeholder="请输入详细收件地址" required></textarea>
+          <em class="char-count" data-address-count>0/200</em>
+        </span>
+      </label>`
+    : `<div class="pickup-location-card priority-delivery-field">
+        <span class="method-icon method-icon-pin" aria-hidden="true"></span>
+        <div>
+          <b>自提地点</b>
+          <strong>滨湖方圆荟</strong>
+          <small>具体时间老师确认后通知。</small>
+        </div>
+      </div>`;
   return `
     <form class="form-stack inline-reservation-form" id="inlineLeadForm">
       <input type="hidden" name="deliveryMethod" value="${method}" />
@@ -2891,6 +2908,7 @@ function renderDeliveryInfoForm(method = "到校自提") {
         </div>
         <button type="button" class="inline-close-button" data-close-inline-reservation aria-label="收起">×</button>
       </div>
+      ${priorityBlock}
       <label class="smart-field">
         学生姓名
         <span class="input-shell">
@@ -2907,24 +2925,6 @@ function renderDeliveryInfoForm(method = "到校自提") {
         </span>
         <small>数字键盘，便于填写</small>
       </label>
-      ${
-        needsAddress
-          ? `<label class="smart-field">
-              收件地址
-              <span class="input-shell textarea-shell">
-                <span class="field-icon field-icon-location" aria-hidden="true"></span>
-                <textarea name="address" rows="3" maxlength="200" placeholder="请输入详细收件地址" required></textarea>
-                <em class="char-count" data-address-count>0/200</em>
-              </span>
-            </label>`
-          : `<div class="pickup-location-card">
-              <span class="method-icon method-icon-pin" aria-hidden="true"></span>
-              <div>
-                <b>自提地点</b>
-                <small>滨湖方圆荟，具体时间老师确认后通知。</small>
-              </div>
-            </div>`
-      }
       <button type="submit" class="inline-submit-button">${copy.submit}</button>
       <p class="inline-safe-note">提交后先为孩子预留资料，老师会尽快联系确认。</p>
     </form>
