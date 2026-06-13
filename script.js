@@ -1426,6 +1426,12 @@ function renderActivity() {
       ? `<span>已上传：${state.activity.teacherQrFileName || "老师二维码"}</span><button type="button" data-clear-activity-image="teacherQrImage">清除二维码</button>`
       : `<span>未上传时使用系统默认二维码。</span>`;
   }
+  const shareCoverStatus = document.querySelector("[data-share-cover-status]");
+  if (shareCoverStatus) {
+    shareCoverStatus.innerHTML = state.activity.shareImageFileName
+      ? `<span>已上传：${state.activity.shareImageFileName}</span><button type="button" data-clear-share-cover>恢复默认封面</button>`
+      : `<span>未上传时使用分享封面图地址。</span>`;
+  }
 }
 
 function renderJoins() {
@@ -2385,6 +2391,62 @@ function uploadActivityImage(input) {
     });
   };
   reader.readAsDataURL(file);
+}
+
+async function uploadShareCoverImage(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  if (!file.type.startsWith("image/")) {
+    showToast("请选择图片格式的分享封面");
+    input.value = "";
+    return;
+  }
+  if (file.size > 8 * 1024 * 1024) {
+    showToast("分享封面原图请控制在 8MB 以内");
+    input.value = "";
+    return;
+  }
+  try {
+    showToast("分享封面压缩上传中");
+    const prepared = await prepareImageUpload(file);
+    const response = await fetch(apiWithActivity("/api/share-image"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
+      body: JSON.stringify({
+        activitySlug: activeActivitySlug,
+        dataUrl: prepared.dataUrl,
+        fileName: prepared.fileName,
+        mimeType: prepared.mimeType
+      })
+    });
+    if (response.status === 401) {
+      adminAuthenticated = false;
+      renderAdminAuthGate();
+      showToast(publishErrorMessage(response.status));
+      return;
+    }
+    if (!response.ok) {
+      showToast(publishErrorMessage(response.status, await readPublishError(response)));
+      return;
+    }
+    const result = await response.json();
+    if (!result?.url) {
+      showToast("封面上传失败，请重试");
+      return;
+    }
+    state.activity.shareImage = result.url;
+    state.activity.shareImageFileName = file.name;
+    saveState();
+    renderActivity();
+    const published = await publishState();
+    if (published) showToast("分享封面已上传并发布");
+  } catch (error) {
+    console.error("share cover upload failed", error);
+    showToast("分享封面上传失败，请换一张图片重试");
+  } finally {
+    input.value = "";
+  }
 }
 
 function getReferralChannels() {
@@ -3771,6 +3833,17 @@ function bindChrome() {
       showToast("老师二维码已清除");
     }
 
+    const clearShareCover = event.target.closest("[data-clear-share-cover]");
+    if (clearShareCover) {
+      state.activity.shareImage = DEFAULT_SHARE_IMAGE;
+      state.activity.shareImageFileName = "";
+      saveState();
+      renderActivity();
+      publishState();
+      showToast("已恢复默认分享封面");
+      return;
+    }
+
     const finishMaterial = event.target.closest("[data-finish-material]");
     if (finishMaterial) {
       saveState();
@@ -3811,6 +3884,11 @@ function bindChrome() {
     const activityImageInput = event.target.closest("[data-upload-activity-image]");
     if (activityImageInput) {
       uploadActivityImage(activityImageInput);
+      return;
+    }
+    const shareCoverInput = event.target.closest("[data-upload-share-image]");
+    if (shareCoverInput) {
+      uploadShareCoverImage(shareCoverInput);
       return;
     }
     const input = event.target.closest("[data-edit-field]");

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import base64
 import copy
 import hashlib
 import hmac
@@ -28,6 +29,8 @@ ACTIVITIES_DIR = ROOT / "data" / "activities"
 DEFAULT_ACTIVITY_SLUG = "daoshu"
 DEFAULT_SHARE_DESCRIPTION = "50道高三数学精选导数题 源自靶向刷题集训营"
 DEFAULT_SHARE_IMAGE = "https://apply.xdianping.cn/assets/share-target.jpg"
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL", "https://apply.xdianping.cn").strip() or "https://apply.xdianping.cn"
+UPLOADS_DIR = ROOT / "assets" / "uploads"
 SERVER_HOST = os.environ.get("HOST", "127.0.0.1").strip() or "127.0.0.1"
 SERVER_PORT = int(os.environ.get("PORT", "4173").strip() or "4173")
 STATE_LOCK = RLock()
@@ -435,6 +438,35 @@ def absolute_share_url(value, origin):
     if text.startswith(("http://", "https://")):
         return text
     return f"{origin.rstrip('/')}/{text.lstrip('/')}"
+
+
+def save_share_image_upload(payload):
+    data_url = str(payload.get("dataUrl") or "")
+    match = re.match(r"^data:image/(jpeg|jpg|png|webp);base64,(.+)$", data_url, re.IGNORECASE | re.DOTALL)
+    if not match:
+        raise ValueError("invalid image data")
+    image_type = match.group(1).lower()
+    extension = "jpg" if image_type in {"jpeg", "jpg"} else image_type
+    try:
+        image_bytes = base64.b64decode(match.group(2), validate=True)
+    except Exception:
+        raise ValueError("invalid image encoding")
+    if not image_bytes:
+        raise ValueError("empty image")
+    if len(image_bytes) > 900 * 1024:
+        raise ValueError("image too large after compression")
+
+    slug = activity_slug_from_payload(payload)
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"share-{slug}-{int(time.time())}-{secrets.token_hex(4)}.{extension}"
+    output_path = UPLOADS_DIR / filename
+    output_path.write_bytes(image_bytes)
+    return {
+        "ok": True,
+        "url": f"{PUBLIC_BASE_URL.rstrip('/')}/assets/uploads/{filename}",
+        "fileName": filename,
+        "size": len(image_bytes)
+    }
 
 
 def replace_meta_content(markup, selector, content):
@@ -946,6 +978,11 @@ class Handler(SimpleHTTPRequestHandler):
                     slug = activity_slug_from_payload(payload, self.path)
                     write_state(payload, slug)
                     result = {"ok": True}
+                elif path == "/api/share-image":
+                    if not is_admin_authenticated(self):
+                        self.send_json({"ok": False, "error": "admin login required"}, status=401)
+                        return
+                    result = save_share_image_upload(payload)
                 elif path == "/api/activities":
                     if not is_admin_authenticated(self):
                         self.send_json({"ok": False, "error": "admin login required"}, status=401)
