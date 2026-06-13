@@ -2288,7 +2288,8 @@ function loadImageFromDataUrl(dataUrl) {
 
 async function prepareImageUpload(file) {
   const originalDataUrl = await readFileAsDataUrl(file);
-  if (file.size <= 820 * 1024) {
+  const targetDataUrlLength = 420 * 1024;
+  if (originalDataUrl.length <= targetDataUrlLength) {
     return {
       dataUrl: originalDataUrl,
       fileName: file.name,
@@ -2297,7 +2298,7 @@ async function prepareImageUpload(file) {
   }
 
   const image = await loadImageFromDataUrl(originalDataUrl);
-  const maxSide = 1200;
+  const maxSide = 1000;
   const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(image.width * scale));
@@ -2305,9 +2306,9 @@ async function prepareImageUpload(file) {
   const context = canvas.getContext("2d");
   context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-  let quality = 0.86;
+  let quality = 0.82;
   let dataUrl = canvas.toDataURL("image/jpeg", quality);
-  while (dataUrl.length > 650 * 1024 && quality > 0.56) {
+  while (dataUrl.length > targetDataUrlLength && quality > 0.42) {
     quality -= 0.08;
     dataUrl = canvas.toDataURL("image/jpeg", quality);
   }
