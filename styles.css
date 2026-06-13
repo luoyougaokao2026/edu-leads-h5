@@ -4513,6 +4513,71 @@ tbody tr.is-selected {
   background: rgba(255, 255, 255, 0.9);
 }
 
+.wechat-share-guide {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: none;
+  background: rgba(5, 16, 12, 0.62);
+  color: #fff;
+}
+
+.wechat-share-guide.is-visible {
+  display: block;
+}
+
+.wechat-share-arrow {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  padding: 4px 12px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #111;
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+
+.wechat-share-arrow::after {
+  content: "";
+  position: absolute;
+  right: 18px;
+  top: 36px;
+  width: 48px;
+  height: 48px;
+  border-top: 3px solid rgba(255, 255, 255, 0.95);
+  border-right: 3px solid rgba(255, 255, 255, 0.95);
+  transform: rotate(-18deg);
+  border-radius: 0 12px 0 0;
+}
+
+.wechat-share-card {
+  position: absolute;
+  top: 96px;
+  right: 22px;
+  max-width: 250px;
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #16201b;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.24);
+}
+
+.wechat-share-card strong {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.wechat-share-card p,
+.wechat-share-card small {
+  display: block;
+  margin: 0;
+  color: #6a746e;
+  line-height: 1.5;
+}
+
 .public-page .stats-band {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

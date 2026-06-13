@@ -2642,6 +2642,27 @@ function applyVisibilitySettings() {
   root.classList.toggle("hide-full-list", !state.visibility.showFullList);
 }
 
+function showWeChatShareGuide(copied = false) {
+  let guide = document.querySelector("#wechatShareGuide");
+  if (!guide) {
+    guide = document.createElement("div");
+    guide.id = "wechatShareGuide";
+    guide.className = "wechat-share-guide";
+    guide.innerHTML = `
+      <div class="wechat-share-arrow">···</div>
+      <div class="wechat-share-card">
+        <strong>点右上角分享</strong>
+        <p>选择“转发给朋友”或“分享到朋友圈”</p>
+        <small></small>
+      </div>
+    `;
+    guide.addEventListener("click", () => guide.classList.remove("is-visible"));
+    document.body.appendChild(guide);
+  }
+  guide.querySelector("small").textContent = copied ? "分享链接已复制" : "微信会使用当前页面卡片";
+  guide.classList.add("is-visible");
+}
+
 async function shareActivity(ref = "page", customText = "") {
   const payload = getSharePayload(ref);
   const shareText = customText || `${payload.text}\n${payload.url}`;
@@ -2649,12 +2670,14 @@ async function shareActivity(ref = "page", customText = "") {
   updateShareMeta();
 
   if (isWeChatBrowser()) {
+    let copied = false;
     try {
       await navigator.clipboard.writeText(shareText);
-      showToast("请点右上角 ··· 分享，链接已复制");
+      copied = true;
     } catch {
-      showToast("请点右上角 ··· 分享给朋友或朋友圈");
+      copied = false;
     }
+    showWeChatShareGuide(copied);
     return;
   }
 
