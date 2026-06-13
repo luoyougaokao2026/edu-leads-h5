@@ -830,6 +830,27 @@ function applySyncedStateSnapshot(snapshot) {
   saveState();
 }
 
+async function readPublishError(response) {
+  try {
+    const payload = await response.clone().json();
+    return payload?.error || "";
+  } catch {
+    try {
+      return (await response.text()).trim();
+    } catch {
+      return "";
+    }
+  }
+}
+
+function publishErrorMessage(status, detail = "") {
+  if (status === 401) return "后台登录已失效，或正在家长端域名操作；请到管理端重新登录后发布";
+  if (status === 413) return "图片太大，发布失败；请压缩后重新上传";
+  if (status >= 500) return "服务器保存失败，请稍后重试或查看服务日志";
+  if (detail) return `发布失败：${detail}`;
+  return `发布失败：HTTP ${status}`;
+}
+
 async function publishState() {
   saveState();
   const button = document.querySelector("#publishActivity");
@@ -848,12 +869,19 @@ async function publishState() {
     if (response.status === 401) {
       adminAuthenticated = false;
       renderAdminAuthGate();
-      throw new Error("admin login required");
+      showToast(publishErrorMessage(response.status));
+      return false;
     }
-    if (!response.ok) throw new Error("publish failed");
+    if (!response.ok) {
+      showToast(publishErrorMessage(response.status, await readPublishError(response)));
+      return false;
+    }
     showToast("已发布，家长端刷新后生效");
-  } catch {
-    showToast(adminAuthenticated ? "已保存到本机；手机生效需使用发布服务" : "请先登录后台");
+    return true;
+  } catch (error) {
+    console.error("publish failed", error);
+    showToast(adminAuthenticated ? "发布失败，请检查网络后重试" : "请先登录后台");
+    return false;
   } finally {
     if (button) {
       button.disabled = false;
@@ -2321,8 +2349,8 @@ function uploadMaterialFile(input) {
     saveState();
     renderMaterials();
     renderMaterialsPreview();
-    await publishState();
-    showToast(isImage ? "图片已压缩并发布" : "文件已加入资料内容");
+    const published = await publishState();
+    if (published) showToast(isImage ? "图片已压缩并发布" : "文件已加入资料内容并发布");
   };
   finishUpload().catch(() => {
     showToast("文件读取失败，请换一张图片重试");
@@ -2351,8 +2379,9 @@ function uploadActivityImage(input) {
     state.activity[`${key.replace(/Image$/, "")}FileName`] = file.name;
     saveState();
     renderActivity();
-    publishState();
-    showToast("老师二维码已上传");
+    publishState().then((published) => {
+      if (published) showToast("老师二维码已上传并发布");
+    });
   };
   reader.readAsDataURL(file);
 }
