@@ -631,6 +631,14 @@ h1 {
   font-weight: 800;
 }
 
+.join-list .section-title button {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #edf8f1;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .join-list,
 .course-block {
   padding: 14px;
@@ -3566,6 +3574,12 @@ tbody tr.is-selected {
   font-size: 22px;
 }
 
+.drawer-subtitle {
+  margin: -8px 46px 14px 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .form-stack {
   display: grid;
   gap: 14px;
@@ -4005,6 +4019,15 @@ tbody tr.is-selected {
 .all-list {
   display: grid;
   gap: 8px;
+  max-height: min(58vh, 520px);
+  overflow-y: auto;
+  padding-right: 2px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.all-list .join-item {
+  padding: 10px 0;
 }
 
 .toast {

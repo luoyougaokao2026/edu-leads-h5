@@ -341,6 +341,7 @@ let joinAutoScrollTimer = null;
 let joinAutoScrollPaused = false;
 let joinAutoScrollResumeTimer = null;
 let joinAutoScrollInternal = false;
+const RECENT_JOIN_PREVIEW_LIMIT = 4;
 let activeLeadFilter = "全部访客";
 let selectedCrmEntryKey = "";
 let latestPublishedAt = "";
@@ -1023,7 +1024,7 @@ const panels = {
     type: "newChannel"
   },
   allJoins: {
-    title: "全部接龙名单",
+    title: "全部领取动态",
     type: "allJoins"
   },
   detail: {
@@ -1389,15 +1390,19 @@ function getSharerNameFromSource(source) {
   return channel.name.replace(/分享$/, "").trim() || null;
 }
 
-function getRecentJoins() {
+function getOrderedPublicJoins() {
   const sharerName = getSharerNameFromSource(state.currentSource);
   const visibleJoins = getVisibleJoins();
-  if (!sharerName) return visibleJoins.slice(0, 4);
+  if (!sharerName) return visibleJoins;
 
   const sharerJoin = visibleJoins.find((item) => item.name === sharerName);
-  if (!sharerJoin) return visibleJoins.slice(0, 4);
+  if (!sharerJoin) return visibleJoins;
 
-  return [sharerJoin, ...visibleJoins.filter((item) => item.name !== sharerName)].slice(0, 4);
+  return [sharerJoin, ...visibleJoins.filter((item) => item.name !== sharerName)];
+}
+
+function getRecentJoins() {
+  return getOrderedPublicJoins().slice(0, RECENT_JOIN_PREVIEW_LIMIT);
 }
 
 function renderSourceNotice() {
@@ -1437,6 +1442,12 @@ function renderActivity() {
 function renderJoins() {
   const container = document.querySelector("#recentJoins");
   const joins = getRecentJoins();
+  const allJoins = getOrderedPublicJoins();
+  const allButton = document.querySelector('.join-list [data-open-panel="allJoins"]');
+  if (allButton) {
+    allButton.textContent = allJoins.length > RECENT_JOIN_PREVIEW_LIMIT ? `查看全部 ${allJoins.length} 位家长` : "已全部显示";
+    allButton.hidden = allJoins.length <= RECENT_JOIN_PREVIEW_LIMIT;
+  }
   const loopJoins = joins.length > 3 ? [...joins, ...joins] : joins;
   container.innerHTML = loopJoins
     .map(
@@ -3368,21 +3379,24 @@ function drawerContent(type) {
   }
 
   if (type === "allJoins") {
+    const joins = getOrderedPublicJoins();
     return `
+      <p class="drawer-subtitle">已有 ${joins.length} 位家长领取，前台信息已做脱敏展示。</p>
       <div class="all-list">
-        ${state.joins
+        ${joins.length ? joins
           .map(
             (item) => `
               <article class="join-item">
                 ${renderJoinAvatar(item)}
                 <div>
-                  <strong>${item.id}. ${publicJoinTitle(item)}</strong>
-                  <small>${state.visibility.maskNames ? "信息已脱敏" : publicJoinMeta(item)}</small>
+                  <strong>${publicJoinTitle(item)}</strong>
+                  <small>${publicJoinMeta(item) || "刚刚领取"}</small>
                 </div>
+                <span class="join-rank">#${item.id}</span>
               </article>
             `
           )
-          .join("")}
+          .join("") : `<p class="empty-hint">暂无领取动态。</p>`}
       </div>
     `;
   }
