@@ -4140,8 +4140,7 @@ tbody tr.is-selected {
 }
 
 .hide-stats .stats-band,
-.hide-recent-joins .join-list,
-.hide-full-list [data-open-panel="allJoins"] {
+.hide-recent-joins .join-list {
   display: none !important;
 }
 

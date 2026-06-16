@@ -318,7 +318,6 @@ const defaultState = {
     showAvatars: true,
     maskNames: true,
     showGradeSubject: true,
-    showFullList: false,
     showCampus: false,
     showPhone: false
   },
@@ -2712,7 +2711,6 @@ function applyVisibilitySettings() {
   root.classList.toggle("hide-stats", !state.visibility.showStats);
   root.classList.toggle("hide-recent-joins", !state.visibility.showRecentJoins);
   root.classList.toggle("hide-avatars", !state.visibility.showAvatars);
-  root.classList.toggle("hide-full-list", !state.visibility.showFullList);
 }
 
 function showWeChatShareGuide(copied = false) {
