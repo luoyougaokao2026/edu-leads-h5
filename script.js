@@ -2657,12 +2657,16 @@ function downloadCsv(filename, rows) {
 
 function exportLeadData() {
   const rows = [
-    ["姓名", "手机号", "年级", "科目", "学生学校", "来源", "意向分", "跟进状态", "学习问题", "进入次数", "累计停留秒", "点击次数", "最后访问", "备注"],
+    ["姓名", "手机号", "微信昵称", "微信openid", "微信授权时间", "年级", "科目", "学生学校", "来源", "意向分", "跟进状态", "学习问题", "进入次数", "累计停留秒", "点击次数", "最后访问", "备注"],
     ...state.leads.map((lead) => {
       const behavior = lead.behavior || {};
+      const wechat = getRecordWechatIdentity(lead) || {};
       return [
         lead.name,
         lead.phone,
+        wechat.nickname || "",
+        wechat.openid || "",
+        wechat.authorizedAt || "",
         lead.grade,
         lead.subject,
         lead.school || lead.answers?.school || lead.answers?.["所在学校"] || "",
