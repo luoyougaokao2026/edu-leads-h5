@@ -1606,6 +1606,27 @@ function renderLeadRows() {
     : `<tr><td colspan="7" class="empty-table">当前筛选下暂无客户</td></tr>`;
 }
 
+function getSelectedCrmRow() {
+  return Array.from(document.querySelectorAll("[data-crm-entry-key]")).find((row) => row.dataset.crmEntryKey === selectedCrmEntryKey) || null;
+}
+
+function syncLeadDetailPosition() {
+  const detail = document.querySelector("#leadDetail");
+  const layout = document.querySelector(".crm-layout");
+  const row = getSelectedCrmRow();
+  if (!detail || !layout || !row) return;
+  if (window.matchMedia("(max-width: 980px)").matches) {
+    detail.style.removeProperty("--lead-detail-offset");
+    return;
+  }
+  const offset = Math.max(0, Math.round(row.getBoundingClientRect().top - layout.getBoundingClientRect().top));
+  detail.style.setProperty("--lead-detail-offset", `${offset}px`);
+}
+
+function queueLeadDetailPositionSync() {
+  requestAnimationFrame(syncLeadDetailPosition);
+}
+
 function setLeadFilter(filter) {
   activeLeadFilter = filter;
   document.querySelectorAll("[data-lead-filter]").forEach((item) => item.classList.toggle("is-selected", item.dataset.leadFilter === filter));
@@ -1725,6 +1746,7 @@ function renderLeadDetail() {
   const entry = visibleEntries.find((item) => item.key === selectedCrmEntryKey) || visibleEntries[0];
   if (!entry) {
     document.querySelector("#leadDetail").innerHTML = `<p class="empty-hint">暂无客户或访客数据。</p>`;
+    queueLeadDetailPositionSync();
     return;
   }
   if (entry.kind === "visitor") {
@@ -1829,6 +1851,7 @@ function renderLeadDetail() {
       ${lead.actions.map((action) => `<p>${action}</p>`).join("")}
     </div>
   `;
+  queueLeadDetailPositionSync();
 }
 
 function renderVisitorDetail(entry) {
@@ -1875,6 +1898,7 @@ function renderVisitorDetail(entry) {
       <p class="empty-hint">这是微信授权访客，只记录 openid、微信昵称、头像和访问行为。家长提交预约后，会升级为正式线索。</p>
     </div>
   `;
+  queueLeadDetailPositionSync();
 }
 
 function renderLeadAnswers(lead) {
@@ -3973,6 +3997,7 @@ function bindChrome() {
     syncVisitorBehavior();
     syncVisitToServer(false);
   }, 10000);
+  window.addEventListener("resize", queueLeadDetailPositionSync);
   window.setInterval(refreshPublishedState, 4000);
   window.setInterval(renderCountdown, 1000);
 }
