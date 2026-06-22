@@ -2657,10 +2657,14 @@ function downloadCsv(filename, rows) {
 
 function exportLeadData() {
   const rows = [
-    ["姓名", "手机号", "微信昵称", "微信openid", "微信授权时间", "年级", "科目", "学生学校", "来源", "意向分", "跟进状态", "学习问题", "进入次数", "累计停留秒", "点击次数", "最后访问", "备注"],
+    ["姓名", "手机号", "微信昵称", "微信openid", "微信授权时间", "年级", "科目", "学生学校", "领取方式", "自提地点", "收件地址", "来源", "意向分", "跟进状态", "学习问题", "进入次数", "累计停留秒", "点击次数", "最后访问", "备注"],
     ...state.leads.map((lead) => {
       const behavior = lead.behavior || {};
       const wechat = getRecordWechatIdentity(lead) || {};
+      const answers = lead.answers || {};
+      const deliveryMethod = answers.deliveryMethod || "";
+      const pickupLocation = deliveryMethod === "到校自提" ? "滨湖方圆荟" : "";
+      const address = answers.address || answers["收件地址"] || "";
       return [
         lead.name,
         lead.phone,
@@ -2670,6 +2674,9 @@ function exportLeadData() {
         lead.grade,
         lead.subject,
         lead.school || lead.answers?.school || lead.answers?.["所在学校"] || "",
+        deliveryMethod,
+        pickupLocation,
+        address,
         lead.source,
         lead.score,
         lead.status,
