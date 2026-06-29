@@ -851,6 +851,7 @@ function publishErrorMessage(status, detail = "") {
 }
 
 async function publishState() {
+  clearScheduledPublish();
   saveState();
   const button = document.querySelector("#publishActivity");
   const originalText = button?.textContent || "保存并发布";
@@ -887,6 +888,22 @@ async function publishState() {
       button.textContent = originalText;
     }
   }
+}
+
+let scheduledPublishTimer = null;
+
+function clearScheduledPublish() {
+  if (!scheduledPublishTimer) return;
+  clearTimeout(scheduledPublishTimer);
+  scheduledPublishTimer = null;
+}
+
+function schedulePublishState(delay = 600) {
+  clearScheduledPublish();
+  scheduledPublishTimer = setTimeout(() => {
+    scheduledPublishTimer = null;
+    publishState();
+  }, delay);
 }
 
 function getActualJoinCount() {
@@ -2605,7 +2622,8 @@ function renderFields() {
 }
 
 function updateFieldFromControl(input) {
-  const field = state.fields[Number(input.dataset.editField)];
+  const index = Number(input.dataset.editField);
+  const field = state.fields[index];
   if (!field) return;
   const prop = input.dataset.fieldProp;
   if (prop === "required") {
@@ -2618,7 +2636,13 @@ function updateFieldFromControl(input) {
   } else {
     field[prop] = input.value;
   }
-  if (prop === "name") field.key = inferFieldKey(field, Number(input.dataset.editField));
+  if (!field.key) field.key = inferFieldKey(field, index);
+  if (prop === "name" && index === 0 && field.key === "name") {
+    state.activity.studentNameLabel = input.value || "学生姓名";
+  }
+  if (prop === "name" && index === 1 && field.key === "phone") {
+    state.activity.phoneLabel = input.value || "联系电话";
+  }
   saveState();
 }
 
@@ -2809,13 +2833,11 @@ function sharePrompt(ref) {
   return `我刚领了一份${state.activity.title}。\n\n${state.activity.shareLead}\n\n领取入口：\n${payload.url}`;
 }
 
-const CORE_RESERVATION_FIELD_KEYS = new Set(["name", "phone", "school", "address", "studentName", "deliveryMethod"]);
-const CORE_RESERVATION_FIELD_WORDS = ["姓名", "联系方式", "联系电话", "手机号", "手机", "电话", "所在学校", "学校", "收件地址", "地址", "领取方式"];
+const CORE_RESERVATION_FIELD_KEYS = new Set(["school", "address", "studentName", "deliveryMethod"]);
 
-function isCoreReservationField(field) {
+function isCoreReservationField(field, index) {
   const key = String(field.key || "");
-  const name = String(field.name || "");
-  return CORE_RESERVATION_FIELD_KEYS.has(key) || CORE_RESERVATION_FIELD_WORDS.some((word) => name.includes(word));
+  return CORE_RESERVATION_FIELD_KEYS.has(key) || (index === 0 && key === "name") || (index === 1 && key === "phone");
 }
 
 function renderConfiguredField(field, index) {
@@ -2849,7 +2871,7 @@ function renderLeadFormFields() {
 function renderReservationExtraFields() {
   const extraFields = state.fields
     .map((field, index) => ({ field, index }))
-    .filter(({ field }) => !isCoreReservationField(field));
+    .filter(({ field, index }) => !isCoreReservationField(field, index));
   if (!extraFields.length) return "";
 
   return `
@@ -3947,6 +3969,7 @@ function bindChrome() {
     const input = event.target.closest("[data-edit-field]");
     if (input) {
       updateFieldFromControl(input);
+      schedulePublishState();
       return;
     }
     const materialInput = event.target.closest("[data-edit-material]");
