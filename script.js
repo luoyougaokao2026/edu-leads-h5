@@ -44,6 +44,10 @@ const routePath = window.location.pathname.replace(/\/+$/, "") || "/";
 const isApplyAdminHost = window.location.hostname === "apply-admin.xdianping.cn";
 const isApplyPublicHost = window.location.hostname === "apply.xdianping.cn";
 const isAdminPreview = isApplyAdminHost || routePath === "/admin" || urlParams.get("admin") === "1" || urlParams.get("view") === "admin";
+const isLocalPreview =
+  window.location.protocol === "file:" ||
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1";
 function normalizeActivitySlug(value) {
   const text = String(value || "").trim().toLowerCase();
   if (!text) return DEFAULT_ACTIVITY_SLUG;
@@ -84,6 +88,9 @@ const publicActivityCopy = {
 };
 if (isPublicPage) {
   document.documentElement.classList.add("public-page");
+}
+if (isLocalPreview) {
+  document.documentElement.classList.add("local-preview");
 }
 if (isAdminPreview) {
   document.documentElement.classList.add("admin-preview");

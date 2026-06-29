@@ -4280,7 +4280,7 @@ tbody tr.is-selected {
     right: 12px;
     bottom: 82px;
     z-index: 80;
-    display: flex;
+    display: none;
     gap: 6px;
     padding: 6px;
     border: 1px solid rgba(23, 32, 27, 0.12);
@@ -4288,6 +4288,10 @@ tbody tr.is-selected {
     background: rgba(255, 255, 255, 0.94);
     box-shadow: 0 10px 26px rgba(23, 32, 27, 0.16);
     backdrop-filter: blur(10px);
+  }
+
+  html.local-preview .local-view-switch {
+    display: flex;
   }
 
   .local-view-switch button {
