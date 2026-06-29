@@ -2592,11 +2592,11 @@ function renderFields() {
           <div>
             <div class="field-edit-grid">
               <label>
-                字段名称
+                问题名称
                 <input data-edit-field="${index}" data-field-prop="name" value="${field.name}" />
               </label>
               <label>
-                字段类型
+                问题类型
                 <select data-edit-field="${index}" data-field-prop="type">
                   <option ${field.type === "填空" ? "selected" : ""}>填空</option>
                   <option ${field.type === "单选" ? "selected" : ""}>单选</option>
