@@ -133,6 +133,15 @@ const defaultState = {
     pickupLocationNote: "具体时间老师确认后通知。",
     reservationSubmitText: "提交领取预约",
     reservationConfirmNote: "提交后先为孩子预留资料，老师会尽快联系确认。",
+    studentNameLabel: "学生姓名",
+    studentNamePlaceholder: "请输入学生姓名",
+    schoolLabel: "所在学校",
+    schoolPlaceholder: "输入学校名称",
+    phoneLabel: "联系电话",
+    phonePlaceholder: "请输入手机号",
+    phoneHint: "数字键盘，便于填写",
+    addressLabel: "收件地址",
+    addressPlaceholder: "请输入详细收件地址",
     teacherWechat: "math-guide-2026",
     passphrase: "导数资料",
     successTitle: "领取预约已提交",
@@ -2831,20 +2840,20 @@ function renderLeadFormFields() {
 function renderDeliveryFormFields() {
   return `
     <label>
-      学生姓名
-      <input name="studentName" placeholder="请填写学生姓名" required />
+      ${state.activity.studentNameLabel || "学生姓名"}
+      <input name="studentName" placeholder="${state.activity.studentNamePlaceholder || "请填写学生姓名"}" required />
     </label>
     <label>
-      所在学校
-      <input name="school" placeholder="请填写所在学校" required />
+      ${state.activity.schoolLabel || "所在学校"}
+      <input name="school" placeholder="${state.activity.schoolPlaceholder || "请填写所在学校"}" required />
     </label>
     <label>
-      联系电话
-      <input name="phone" placeholder="请填写联系电话" required />
+      ${state.activity.phoneLabel || "联系电话"}
+      <input name="phone" placeholder="${state.activity.phonePlaceholder || "请填写联系电话"}" required />
     </label>
     <label data-address-field>
-      收件地址
-      <textarea name="address" rows="3" placeholder="请填写收件地址" required></textarea>
+      ${state.activity.addressLabel || "收件地址"}
+      <textarea name="address" rows="3" placeholder="${state.activity.addressPlaceholder || "请填写收件地址"}" required></textarea>
     </label>
   `;
 }
@@ -2901,10 +2910,10 @@ function renderDeliveryMethodPicker() {
 function renderSchoolInput() {
   return `
     <label class="smart-field">
-      所在学校
+      ${state.activity.schoolLabel || "所在学校"}
       <span class="input-shell">
         <span class="field-icon field-icon-school" aria-hidden="true"></span>
-        <input name="school" data-school-input placeholder="输入学校名称" autocomplete="off" required />
+        <input name="school" data-school-input placeholder="${state.activity.schoolPlaceholder || "输入学校名称"}" autocomplete="off" required />
       </span>
       <div class="school-suggestions" data-school-suggestions hidden></div>
     </label>
@@ -2916,10 +2925,10 @@ function renderDeliveryInfoForm(method = "到校自提") {
   const needsAddress = method === "包邮到家";
   const priorityBlock = needsAddress
     ? `<label class="smart-field priority-delivery-field">
-        收件地址
+        ${state.activity.addressLabel || "收件地址"}
         <span class="input-shell textarea-shell">
           <span class="field-icon field-icon-location" aria-hidden="true"></span>
-          <textarea name="address" rows="3" maxlength="200" placeholder="请输入详细收件地址" required></textarea>
+          <textarea name="address" rows="3" maxlength="200" placeholder="${state.activity.addressPlaceholder || "请输入详细收件地址"}" required></textarea>
           <em class="char-count" data-address-count>0/200</em>
         </span>
       </label>`
@@ -2944,20 +2953,20 @@ function renderDeliveryInfoForm(method = "到校自提") {
       </div>
       ${priorityBlock}
       <label class="smart-field">
-        学生姓名
+        ${state.activity.studentNameLabel || "学生姓名"}
         <span class="input-shell">
           <span class="field-icon field-icon-user" aria-hidden="true"></span>
-          <input name="studentName" placeholder="请输入学生姓名" autocomplete="name" required />
+          <input name="studentName" placeholder="${state.activity.studentNamePlaceholder || "请输入学生姓名"}" autocomplete="name" required />
         </span>
       </label>
       ${renderSchoolInput()}
       <label class="smart-field">
-        联系电话
+        ${state.activity.phoneLabel || "联系电话"}
         <span class="input-shell">
           <span class="field-icon field-icon-phone" aria-hidden="true"></span>
-          <input name="phone" placeholder="请输入手机号" inputmode="numeric" maxlength="11" autocomplete="tel" required />
+          <input name="phone" placeholder="${state.activity.phonePlaceholder || "请输入手机号"}" inputmode="numeric" maxlength="11" autocomplete="tel" required />
         </span>
-        <small>数字键盘，便于填写</small>
+        <small>${state.activity.phoneHint || "数字键盘，便于填写"}</small>
       </label>
       <button type="submit" class="inline-submit-button">${copy.submit}</button>
       <p class="inline-safe-note">${state.activity.reservationConfirmNote || "提交后先为孩子预留资料，老师会尽快联系确认。"}</p>
