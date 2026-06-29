@@ -2877,10 +2877,14 @@ function renderConfiguredField(field, index) {
   const required = field.required ? "required" : "";
   const placeholder = field.placeholder || (field.required ? "请填写" : "可选填");
   if (field.type === "填空" || !field.options.length) {
+    const shouldUseTextarea = placeholder.length > 14 || String(field.name || "").length > 8;
+    const control = shouldUseTextarea
+      ? `<textarea name="${fieldName}" data-field-key="${field.key}" rows="2" placeholder="${placeholder}" ${required}></textarea>`
+      : `<input name="${fieldName}" data-field-key="${field.key}" placeholder="${placeholder}" ${required} />`;
     return `
       <label>
         ${field.name}
-        <input name="${fieldName}" data-field-key="${field.key}" placeholder="${placeholder}" ${required} />
+        ${control}
       </label>
     `;
   }
