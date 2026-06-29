@@ -126,7 +126,9 @@ const defaultState = {
     shippingMethodTitle: "包邮到家",
     shippingMethodDescription: "资料寄到家，适合不方便到校",
     deliverySafeNote: "选择后填写领取信息，资料会先为孩子预留。",
+    pickupFormTitle: "到校自提预约",
     pickupFormSubtitle: "请填写领取信息，老师确认领取时间。",
+    shippingFormTitle: "包邮到家预约",
     shippingFormSubtitle: "请填写收件信息，老师确认后寄出。",
     pickupLocationTitle: "自提地点",
     pickupLocationName: "滨湖方圆荟",
@@ -2905,7 +2907,7 @@ function renderDeliveryFormFields() {
 function deliveryMethodCopy(method) {
   if (method === "包邮到家") {
     return {
-      title: `${state.activity.shippingMethodTitle || "包邮到家"}预约`,
+      title: state.activity.shippingFormTitle || `${state.activity.shippingMethodTitle || "包邮到家"}预约`,
       subtitle: state.activity.shippingFormSubtitle || "请填写收件信息，老师确认后寄出。",
       icon: "box",
       helper: state.activity.shippingMethodDescription || "资料寄到家，适合不方便到校。",
@@ -2913,7 +2915,7 @@ function deliveryMethodCopy(method) {
     };
   }
   return {
-    title: `${state.activity.pickupMethodTitle || "到校自提"}预约`,
+    title: state.activity.pickupFormTitle || `${state.activity.pickupMethodTitle || "到校自提"}预约`,
     subtitle: state.activity.pickupFormSubtitle || "请填写领取信息，老师确认领取时间。",
     icon: "pin",
     helper: state.activity.pickupMethodDescription || "滨湖方圆荟领取，老师确认时间。",
