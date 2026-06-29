@@ -2972,6 +2972,29 @@ tbody tr.is-selected {
   font-size: 12px;
 }
 
+.crm-form-summary {
+  display: grid;
+  gap: 4px;
+  min-width: 150px;
+  max-width: 260px;
+}
+
+.crm-form-summary small {
+  color: #44534c;
+  line-height: 1.45;
+}
+
+.crm-form-summary b {
+  color: #718178;
+  font-weight: 800;
+}
+
+.muted-text {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .lead-detail {
   margin-top: var(--lead-detail-offset, 0);
   max-height: min(720px, calc(100vh - 32px));

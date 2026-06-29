@@ -1613,9 +1613,7 @@ function renderLeadRows() {
           (entry) => `
             <tr data-crm-entry-key="${entry.key}" class="${entry.key === selectedCrmEntryKey ? "is-selected" : ""}">
               <td>${renderCrmCustomerCell(entry)}</td>
-              <td>${entry.grade}</td>
-              <td>${entry.subject}</td>
-              <td>${entry.school}</td>
+              <td>${renderCrmFormSummary(entry)}</td>
               <td>${entry.source}</td>
               <td><span class="score">${entry.score}</span></td>
               <td><span class="status">${entry.status}</span></td>
@@ -1623,7 +1621,7 @@ function renderLeadRows() {
           `
         )
         .join("")
-    : `<tr><td colspan="7" class="empty-table">当前筛选下暂无客户</td></tr>`;
+    : `<tr><td colspan="5" class="empty-table">当前筛选下暂无客户</td></tr>`;
 }
 
 function getSelectedCrmRow() {
@@ -1761,6 +1759,21 @@ function renderCrmCustomerCell(entry) {
   `;
 }
 
+function renderCrmFormSummary(entry) {
+  if (entry.kind !== "lead") return `<span class="muted-text">尚未提交预约</span>`;
+  const rows = getLeadCoreAnswerRows(entry.item)
+    .filter(([label]) => label !== (state.activity.phoneLabel || "联系电话"))
+    .slice(0, 3);
+  const customRows = getLeadCustomAnswerRows(entry.item).filter(([, value]) => String(value || "").trim()).slice(0, 2);
+  const summaryRows = [...rows, ...customRows].slice(0, 4);
+  if (!summaryRows.length) return `<span class="muted-text">未填写</span>`;
+  return `
+    <div class="crm-form-summary">
+      ${summaryRows.map(([label, value]) => `<small><b>${label}</b>：${value || "未填写"}</small>`).join("")}
+    </div>
+  `;
+}
+
 function renderLeadDetail() {
   const visibleEntries = getFilteredLeadEntries();
   const entry = visibleEntries.find((item) => item.key === selectedCrmEntryKey) || visibleEntries[0];
@@ -1789,12 +1802,9 @@ function renderLeadDetail() {
       </div>
     </div>
     <div class="detail-kv">
-      <div><span>电话</span><strong>${lead.phone}</strong></div>
-      <div><span>年级</span><strong>${lead.grade}</strong></div>
-      <div><span>科目</span><strong>${lead.subject}</strong></div>
-      <div><span>学生学校</span><strong>${lead.school || lead.answers?.school || lead.answers?.["所在学校"] || "未填写"}</strong></div>
+      ${renderLeadSummaryAnswers(lead)}
       <div><span>来源</span><strong>${lead.source}</strong></div>
-      <div><span>问题</span><strong>${lead.issue}</strong></div>
+      <div><span>提交状态</span><strong>${lead.status}</strong></div>
     </div>
     <div class="behavior-box">
       <strong>页面行为</strong>
@@ -1922,21 +1932,58 @@ function renderVisitorDetail(entry) {
 }
 
 function renderLeadAnswers(lead) {
-  if (!lead.answers) return `<div><span>暂无自定义字段</span><strong>未记录</strong></div>`;
-  const configured = state.fields
-    .map((field) => `<div><span>${field.name}</span><strong>${lead.answers[field.key] || lead.answers[field.name] || "未填写"}</strong></div>`)
-    .join("");
-  const deliveryFields = [
-    ["领取方式", lead.answers.deliveryMethod],
-    ["学生姓名", lead.answers.name || lead.answers["学生姓名"]],
-    ["所在学校", lead.answers.school || lead.answers["所在学校"]],
-    ["联系电话", lead.answers.phone || lead.answers["联系电话"]],
-    ["收件地址", lead.answers.address || lead.answers["收件地址"]]
-  ]
-    .filter(([, value]) => value)
+  const rows = [...getLeadCoreAnswerRows(lead), ...getLeadCustomAnswerRows(lead)];
+  if (!rows.length) return `<div><span>暂无填写信息</span><strong>未记录</strong></div>`;
+  return rows.map(([label, value]) => `<div><span>${label}</span><strong>${value || "未填写"}</strong></div>`).join("");
+}
+
+function renderLeadSummaryAnswers(lead) {
+  return getLeadCoreAnswerRows(lead)
+    .filter(([label, value]) => label !== (state.activity.addressLabel || "收件地址") && label !== (state.activity.pickupLocationTitle || "自提地点") && value)
+    .slice(0, 4)
     .map(([label, value]) => `<div><span>${label}</span><strong>${value}</strong></div>`)
     .join("");
-  return deliveryFields || configured;
+}
+
+function answerValue(answers = {}, keys = []) {
+  for (const key of keys) {
+    const value = answers[key];
+    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+  }
+  return "";
+}
+
+function displayDeliveryMethod(method = "") {
+  if (method === "包邮到家") return state.activity.shippingMethodTitle || method;
+  if (method === "到校自提") return state.activity.pickupMethodTitle || method;
+  return method;
+}
+
+function getLeadCoreAnswerRows(lead = {}) {
+  const answers = lead.answers || {};
+  const rawMethod = answerValue(answers, ["deliveryMethod", "领取方式"]);
+  const address = answerValue(answers, ["address", "收件地址", state.activity.addressLabel]);
+  const rows = [
+    [state.activity.deliverySheetTitle || "领取方式", displayDeliveryMethod(rawMethod)],
+    [state.activity.studentNameLabel || "学生姓名", answerValue(answers, ["name", "studentName", "学生姓名", "学生姓名或昵称"]) || lead.name || ""],
+    [state.activity.schoolLabel || "所在学校", answerValue(answers, ["school", "所在学校", state.activity.schoolLabel]) || lead.school || ""],
+    [state.activity.phoneLabel || "联系电话", answerValue(answers, ["phone", "联系电话", "联系方式", state.activity.phoneLabel]) || lead.phone || ""]
+  ];
+
+  if (address || rawMethod === "包邮到家") {
+    rows.push([state.activity.addressLabel || "收件地址", address]);
+  } else if (rawMethod === "到校自提") {
+    rows.push([state.activity.pickupLocationTitle || "自提地点", state.activity.pickupLocationName || "待电话或微信确认"]);
+  }
+  return rows.filter(([, value]) => value !== undefined && value !== null && String(value).trim());
+}
+
+function getLeadCustomAnswerRows(lead = {}) {
+  const answers = lead.answers || {};
+  return state.fields
+    .map((field, index) => ({ field, index }))
+    .filter(({ field, index }) => !isCoreReservationField(field, index))
+    .map(({ field }) => [field.name, answerValue(answers, [field.key, field.name])]);
 }
 
 function getSelectedLeadEntry() {
@@ -2735,41 +2782,49 @@ function downloadCsv(filename, rows) {
 }
 
 function exportLeadData() {
+  const formColumns = getLeadExportColumns();
+  const metaColumns = [
+    { label: "微信昵称", value: (lead, behavior, wechat) => wechat.nickname || "" },
+    { label: "微信openid", value: (lead, behavior, wechat) => wechat.openid || "" },
+    { label: "微信授权时间", value: (lead, behavior, wechat) => wechat.authorizedAt || "" },
+    { label: "来源", value: (lead) => lead.source || "" },
+    { label: "意向分", value: (lead) => lead.score || "" },
+    { label: "跟进状态", value: (lead) => lead.status || "" },
+    { label: "进入次数", value: (lead, behavior) => behavior.visits || "" },
+    { label: "累计停留秒", value: (lead, behavior) => behavior.totalSeconds || "" },
+    { label: "点击次数", value: (lead, behavior) => behavior.clicks || 0 },
+    { label: "最后访问", value: (lead, behavior) => behavior.lastSeen || "" },
+    { label: "备注", value: (lead) => lead.note || "" }
+  ];
   const rows = [
-    ["姓名", "手机号", "微信昵称", "微信openid", "微信授权时间", "年级", "科目", "学生学校", "领取方式", "自提地点", "收件地址", "来源", "意向分", "跟进状态", "学习问题", "进入次数", "累计停留秒", "点击次数", "最后访问", "备注"],
+    [...formColumns.map((column) => column.label), ...metaColumns.map((column) => column.label)],
     ...state.leads.map((lead) => {
       const behavior = lead.behavior || {};
       const wechat = getRecordWechatIdentity(lead) || {};
-      const answers = lead.answers || {};
-      const deliveryMethod = answers.deliveryMethod || "";
-      const pickupLocation = deliveryMethod === "到校自提" ? (state.activity.pickupLocationName || "滨湖方圆荟") : "";
-      const address = answers.address || answers["收件地址"] || "";
-      return [
-        lead.name,
-        lead.phone,
-        wechat.nickname || "",
-        wechat.openid || "",
-        wechat.authorizedAt || "",
-        lead.grade,
-        lead.subject,
-        lead.school || lead.answers?.school || lead.answers?.["所在学校"] || "",
-        deliveryMethod,
-        pickupLocation,
-        address,
-        lead.source,
-        lead.score,
-        lead.status,
-        lead.issue,
-        behavior.visits || "",
-        behavior.totalSeconds || "",
-        behavior.clicks || 0,
-        behavior.lastSeen || "",
-        lead.note || ""
-      ];
+      return [...formColumns.map((column) => column.value(lead)), ...metaColumns.map((column) => column.value(lead, behavior, wechat))];
     })
   ];
   downloadCsv("客户数据.csv", rows);
   showToast("客户数据已导出");
+}
+
+function getLeadExportColumns() {
+  const coreColumns = [
+    { label: state.activity.deliverySheetTitle || "领取方式", value: (lead) => displayDeliveryMethod(answerValue(lead.answers || {}, ["deliveryMethod", "领取方式"])) },
+    { label: state.activity.studentNameLabel || "学生姓名", value: (lead) => answerValue(lead.answers || {}, ["name", "studentName", "学生姓名", "学生姓名或昵称"]) || lead.name || "" },
+    { label: state.activity.schoolLabel || "所在学校", value: (lead) => answerValue(lead.answers || {}, ["school", "所在学校", state.activity.schoolLabel]) || lead.school || "" },
+    { label: state.activity.phoneLabel || "联系电话", value: (lead) => answerValue(lead.answers || {}, ["phone", "联系电话", "联系方式", state.activity.phoneLabel]) || lead.phone || "" },
+    { label: state.activity.pickupLocationTitle || "自提地点", value: (lead) => (answerValue(lead.answers || {}, ["deliveryMethod", "领取方式"]) === "到校自提" ? state.activity.pickupLocationName || "" : "") },
+    { label: state.activity.addressLabel || "收件地址", value: (lead) => answerValue(lead.answers || {}, ["address", "收件地址", state.activity.addressLabel]) }
+  ];
+  const customColumns = state.fields
+    .map((field, index) => ({ field, index }))
+    .filter(({ field, index }) => !isCoreReservationField(field, index))
+    .map(({ field }) => ({
+      label: field.name,
+      value: (lead) => answerValue(lead.answers || {}, [field.key, field.name])
+    }));
+  return [...coreColumns, ...customColumns];
 }
 
 function exportReferralData() {
@@ -3070,6 +3125,7 @@ function readConfiguredAnswers(form) {
     }
 
     const input = form.querySelector(`[name="${fieldName}"]`);
+    if (!input) return;
     answers[field.key] = input?.value?.trim() || "";
     answers[field.name] = answers[field.key];
   });
