@@ -119,6 +119,20 @@ const defaultState = {
     noticeLeft: "302 位高三学生/家长已领取",
     ctaText: "立即领取资料",
     formHint: "为给孩子预留资料，请填写领取信息。",
+    deliverySheetTitle: "领取方式",
+    deliverySheetSubtitle: "请选择孩子资料领取方式",
+    pickupMethodTitle: "到校自提",
+    pickupMethodDescription: "滨湖方圆荟领取，老师确认时间",
+    shippingMethodTitle: "包邮到家",
+    shippingMethodDescription: "资料寄到家，适合不方便到校",
+    deliverySafeNote: "选择后填写领取信息，资料会先为孩子预留。",
+    pickupFormSubtitle: "请填写领取信息，老师确认领取时间。",
+    shippingFormSubtitle: "请填写收件信息，老师确认后寄出。",
+    pickupLocationTitle: "自提地点",
+    pickupLocationName: "滨湖方圆荟",
+    pickupLocationNote: "具体时间老师确认后通知。",
+    reservationSubmitText: "提交领取预约",
+    reservationConfirmNote: "提交后先为孩子预留资料，老师会尽快联系确认。",
     teacherWechat: "math-guide-2026",
     passphrase: "导数资料",
     successTitle: "领取预约已提交",
@@ -663,32 +677,8 @@ function resetActivityConfig() {
   const ok = window.confirm("确定重置当前活动页面配置吗？\n\n这会恢复标题、文案、名额、资料展示等页面配置。\n客户数据不会删除。");
   if (!ok) return;
   state.activity = {
-    tag: "高三数学资料",
-    title: "高三导数专题资料包领取",
-    subtitle: "精选往季保校训练营导数题，进群领取小册子和配套讲解视频。",
-    joinLabel: "已领取",
-    totalQuota: "50",
-    deadline: "2026-06-10T22:00",
-    adminName: "高三导数资料包",
-    contentTitle: "资料预览",
-    contentNote: "题册 + 视频",
-    noticeLeft: "302 位高三学生/家长已领取",
-    ctaText: "立即领取资料",
-    formHint: "为给孩子预留资料，请填写领取信息。",
-    teacherWechat: "math-guide-2026",
-    passphrase: "导数资料",
-    successTitle: "领取预约已提交",
-    successSubtitle: "资料已为孩子预留",
-    successContactText: "老师会尽快联系您确认领取安排。",
-    qrTitle: "长按二维码添加老师",
-    qrSubtitle: "领取题册和讲解视频",
-    teacherQrImage: "",
-    teacherQrFileName: "",
-    shareLead: "如果身边有同样需要导数资料的高三家长，可以顺手转给他。",
-    shareTitle: "高三导数50题精讲资料领取",
-    shareDescription: DEFAULT_SHARE_DESCRIPTION,
-    shareImage: DEFAULT_SHARE_IMAGE,
-    audience: ["导数基础题能做，但压轴题不稳定", "恒成立、零点、分类讨论容易卡住", "想进群跟着刷题和看讲解视频"]
+    ...defaultState.activity,
+    audience: [...defaultState.activity.audience]
   };
   saveState();
   renderAll();
@@ -2199,10 +2189,10 @@ function renderSuccessPanel({ name, actualJoinCount, shareRef, shareText, delive
         </div>
         <div class="reserve-info">
           <div>
-            <strong>自提地点</strong>
-            <span>滨湖方圆荟</span>
+            <strong>${state.activity.pickupLocationTitle || "自提地点"}</strong>
+            <span>${state.activity.pickupLocationName || "滨湖方圆荟"}</span>
           </div>
-          <p>具体地址和领取时间将通过电话或微信发送。</p>
+          <p>${state.activity.pickupLocationNote || "具体地址和领取时间将通过电话或微信发送。"}</p>
         </div>
         <div class="wechat-copy-card">
           <div>
@@ -2687,7 +2677,7 @@ function exportLeadData() {
       const wechat = getRecordWechatIdentity(lead) || {};
       const answers = lead.answers || {};
       const deliveryMethod = answers.deliveryMethod || "";
-      const pickupLocation = deliveryMethod === "到校自提" ? "滨湖方圆荟" : "";
+      const pickupLocation = deliveryMethod === "到校自提" ? (state.activity.pickupLocationName || "滨湖方圆荟") : "";
       const address = answers.address || answers["收件地址"] || "";
       return [
         lead.name,
@@ -2862,19 +2852,19 @@ function renderDeliveryFormFields() {
 function deliveryMethodCopy(method) {
   if (method === "包邮到家") {
     return {
-      title: "包邮到家预约",
-      subtitle: "请填写收件信息，老师确认后寄出。",
+      title: `${state.activity.shippingMethodTitle || "包邮到家"}预约`,
+      subtitle: state.activity.shippingFormSubtitle || "请填写收件信息，老师确认后寄出。",
       icon: "box",
-      helper: "资料寄到家，适合不方便到校。",
-      submit: "提交领取预约"
+      helper: state.activity.shippingMethodDescription || "资料寄到家，适合不方便到校。",
+      submit: state.activity.reservationSubmitText || "提交领取预约"
     };
   }
   return {
-    title: "到校自提预约",
-    subtitle: "请填写领取信息，老师确认领取时间。",
+    title: `${state.activity.pickupMethodTitle || "到校自提"}预约`,
+    subtitle: state.activity.pickupFormSubtitle || "请填写领取信息，老师确认领取时间。",
     icon: "pin",
-    helper: "滨湖方圆荟领取，老师确认时间。",
-    submit: "提交领取预约"
+    helper: state.activity.pickupMethodDescription || "滨湖方圆荟领取，老师确认时间。",
+    submit: state.activity.reservationSubmitText || "提交领取预约"
   };
 }
 
@@ -2882,28 +2872,28 @@ function renderDeliveryMethodPicker() {
   return `
     <section class="inline-method-picker" aria-label="领取方式">
       <div class="inline-sheet-head">
-        <strong>领取方式</strong>
-        <span>请选择孩子资料领取方式</span>
+        <strong>${state.activity.deliverySheetTitle || "领取方式"}</strong>
+        <span>${state.activity.deliverySheetSubtitle || "请选择孩子资料领取方式"}</span>
       </div>
       <div class="method-card-list">
         <button type="button" class="method-card" data-select-delivery="到校自提">
           <span class="method-icon method-icon-pin" aria-hidden="true"></span>
           <span>
-            <b>到校自提</b>
-            <small>滨湖方圆荟领取，老师确认时间</small>
+            <b>${state.activity.pickupMethodTitle || "到校自提"}</b>
+            <small>${state.activity.pickupMethodDescription || "滨湖方圆荟领取，老师确认时间"}</small>
           </span>
           <em aria-hidden="true">›</em>
         </button>
         <button type="button" class="method-card" data-select-delivery="包邮到家">
           <span class="method-icon method-icon-box" aria-hidden="true"></span>
           <span>
-            <b>包邮到家</b>
-            <small>资料寄到家，适合不方便到校</small>
+            <b>${state.activity.shippingMethodTitle || "包邮到家"}</b>
+            <small>${state.activity.shippingMethodDescription || "资料寄到家，适合不方便到校"}</small>
           </span>
           <em aria-hidden="true">›</em>
         </button>
       </div>
-      <p class="inline-safe-note">选择后填写领取信息，资料会先为孩子预留。</p>
+      <p class="inline-safe-note">${state.activity.deliverySafeNote || "选择后填写领取信息，资料会先为孩子预留。"}</p>
     </section>
   `;
 }
@@ -2936,9 +2926,9 @@ function renderDeliveryInfoForm(method = "到校自提") {
     : `<div class="pickup-location-card priority-delivery-field">
         <span class="method-icon method-icon-pin" aria-hidden="true"></span>
         <div>
-          <b>自提地点</b>
-          <strong>滨湖方圆荟</strong>
-          <small>具体时间老师确认后通知。</small>
+          <b>${state.activity.pickupLocationTitle || "自提地点"}</b>
+          <strong>${state.activity.pickupLocationName || "滨湖方圆荟"}</strong>
+          <small>${state.activity.pickupLocationNote || "具体时间老师确认后通知。"}</small>
         </div>
       </div>`;
   return `
@@ -2970,7 +2960,7 @@ function renderDeliveryInfoForm(method = "到校自提") {
         <small>数字键盘，便于填写</small>
       </label>
       <button type="submit" class="inline-submit-button">${copy.submit}</button>
-      <p class="inline-safe-note">提交后先为孩子预留资料，老师会尽快联系确认。</p>
+      <p class="inline-safe-note">${state.activity.reservationConfirmNote || "提交后先为孩子预留资料，老师会尽快联系确认。"}</p>
     </form>
   `;
 }
@@ -3077,7 +3067,7 @@ function createLeadSubmission(type, answers) {
       actions: [
         type === "join" ? `领取方式：${deliveryMethod || "未选择"}` : "刚刚提交资料领取",
         school ? `所在学校：${school}` : `分数区间：${scoreRange}`,
-        address ? `收件地址：${address}` : "自提地点待电话或微信确认",
+        address ? `收件地址：${address}` : `${state.activity.pickupLocationTitle || "自提地点"}：${state.activity.pickupLocationName || "待电话或微信确认"}`,
         `进入 ${behavior.visits} 次，停留 ${formatDuration(behavior.currentSeconds)}`,
         `专属分享链接：${shareUrl}`,
         type === "trial" ? "预约试听" : type === "diagnosis" ? "完成诊断" : "资料已为孩子预留"
