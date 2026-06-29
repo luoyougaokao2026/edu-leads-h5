@@ -2809,32 +2809,54 @@ function sharePrompt(ref) {
   return `我刚领了一份${state.activity.title}。\n\n${state.activity.shareLead}\n\n领取入口：\n${payload.url}`;
 }
 
-function renderLeadFormFields() {
-  return state.fields
-    .map((field, index) => {
-      const fieldName = `field_${index}`;
-      const required = field.required ? "required" : "";
-      if (field.type === "填空" || !field.options.length) {
-        return `
-          <label>
-            ${field.name}
-            <input name="${fieldName}" data-field-key="${field.key}" placeholder="${field.required ? "请填写" : "可选填"}" ${required} />
-          </label>
-        `;
-      }
+const CORE_RESERVATION_FIELD_KEYS = new Set(["name", "phone", "school", "address", "studentName", "deliveryMethod"]);
+const CORE_RESERVATION_FIELD_WORDS = ["姓名", "联系方式", "联系电话", "手机号", "手机", "电话", "所在学校", "学校", "收件地址", "地址", "领取方式"];
 
-      return `
-        <label>
-          ${field.name}
-          <div class="choice-row" data-choice-group="${fieldName}" data-field-key="${field.key}" data-required="${field.required}" data-multiple="${field.type === "多选"}">
-            ${field.options
-              .map((option, optionIndex) => `<button type="button" class="${optionIndex === 0 ? "is-picked" : ""}">${option}</button>`)
-              .join("")}
-          </div>
-        </label>
-      `;
-    })
-    .join("");
+function isCoreReservationField(field) {
+  const key = String(field.key || "");
+  const name = String(field.name || "");
+  return CORE_RESERVATION_FIELD_KEYS.has(key) || CORE_RESERVATION_FIELD_WORDS.some((word) => name.includes(word));
+}
+
+function renderConfiguredField(field, index) {
+  const fieldName = `field_${index}`;
+  const required = field.required ? "required" : "";
+  if (field.type === "填空" || !field.options.length) {
+    return `
+      <label>
+        ${field.name}
+        <input name="${fieldName}" data-field-key="${field.key}" placeholder="${field.required ? "请填写" : "可选填"}" ${required} />
+      </label>
+    `;
+  }
+
+  return `
+    <label>
+      ${field.name}
+      <div class="choice-row" data-choice-group="${fieldName}" data-field-key="${field.key}" data-required="${field.required}" data-multiple="${field.type === "多选"}">
+        ${field.options
+          .map((option, optionIndex) => `<button type="button" class="${optionIndex === 0 ? "is-picked" : ""}">${option}</button>`)
+          .join("")}
+      </div>
+    </label>
+  `;
+}
+
+function renderLeadFormFields() {
+  return state.fields.map((field, index) => renderConfiguredField(field, index)).join("");
+}
+
+function renderReservationExtraFields() {
+  const extraFields = state.fields
+    .map((field, index) => ({ field, index }))
+    .filter(({ field }) => !isCoreReservationField(field));
+  if (!extraFields.length) return "";
+
+  return `
+    <div class="reservation-extra-fields">
+      ${extraFields.map(({ field, index }) => renderConfiguredField(field, index)).join("")}
+    </div>
+  `;
 }
 
 function renderDeliveryFormFields() {
@@ -2968,6 +2990,7 @@ function renderDeliveryInfoForm(method = "到校自提") {
         </span>
         <small>${state.activity.phoneHint || "数字键盘，便于填写"}</small>
       </label>
+      ${renderReservationExtraFields()}
       <button type="submit" class="inline-submit-button">${copy.submit}</button>
       <p class="inline-safe-note">${state.activity.reservationConfirmNote || "提交后先为孩子预留资料，老师会尽快联系确认。"}</p>
     </form>
@@ -3000,6 +3023,7 @@ function readDeliveryAnswers(form) {
   const phone = form.querySelector('[name="phone"]')?.value?.trim() || "";
   const address = form.querySelector('[name="address"]')?.value?.trim() || "";
   return {
+    ...readConfiguredAnswers(form),
     deliveryMethod,
     name,
     "学生姓名": name,
@@ -3304,12 +3328,27 @@ function bindAddressCounter(scope = document) {
   update();
 }
 
+function bindChoiceGroups(scope = document) {
+  scope.querySelectorAll("[data-choice-group] button").forEach((button) => {
+    button.addEventListener("click", () => {
+      const group = button.parentElement;
+      if (group.dataset.multiple === "true") {
+        button.classList.toggle("is-picked");
+        return;
+      }
+      group.querySelectorAll("button").forEach((item) => item.classList.remove("is-picked"));
+      button.classList.add("is-picked");
+    });
+  });
+}
+
 function bindInlineReservationForm() {
   const container = document.querySelector("#inlineReservation");
   const form = container?.querySelector("#inlineLeadForm");
   if (!container || !form) return;
   bindSchoolAutocomplete(container);
   bindAddressCounter(container);
+  bindChoiceGroups(container);
   bindLeadFormSubmit(form, "join", (finalSubmission, actualJoinCount, answers) => {
     container.innerHTML = renderInlineSuccessPanel({
       actualJoinCount: finalSubmission.actualJoinCount || actualJoinCount,
@@ -3477,6 +3516,13 @@ function drawerContent(type) {
 function bindLeadFormSubmit(form, type, onSuccess) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
+    const missingChoice = [...form.querySelectorAll('[data-choice-group][data-required="true"]')].find(
+      (group) => !group.querySelector(".is-picked")
+    );
+    if (missingChoice) {
+      showToast("请完善必填选项");
+      return;
+    }
     const submitButton = form.querySelector('button[type="submit"]');
     if (submitButton) {
       submitButton.disabled = true;
@@ -3530,18 +3576,7 @@ function bindDrawerButtons(type) {
     return;
   }
 
-  document.querySelectorAll("[data-choice-group] button").forEach((button) => {
-    button.addEventListener("click", () => {
-      const group = button.parentElement;
-      if (group.dataset.multiple === "true") {
-        button.classList.toggle("is-picked");
-        return;
-      }
-      group.querySelectorAll("button").forEach((item) => item.classList.remove("is-picked"));
-      button.classList.add("is-picked");
-    });
-  });
-
+  bindChoiceGroups(document);
   bindDeliveryOptions(document);
 
   const form = document.querySelector("#leadForm");
