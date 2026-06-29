@@ -141,7 +141,7 @@ const defaultState = {
     schoolPlaceholder: "输入学校名称",
     phoneLabel: "联系电话",
     phonePlaceholder: "请输入手机号",
-    phoneHint: "数字键盘，便于填写",
+    phoneHint: "",
     addressLabel: "收件地址",
     addressPlaceholder: "请输入详细收件地址",
     teacherWechat: "math-guide-2026",
@@ -262,10 +262,10 @@ const defaultState = {
     { type: "家长分享", name: "陈伟分享", source: "user_301", views: 28, joins: 6, shares: 2, leads: ["周同学"] }
   ],
   fields: [
-    { key: "name", name: "学生姓名或昵称", type: "填空", required: true, options: [] },
-    { key: "phone", name: "联系方式", type: "填空", required: true, options: [] },
-    { key: "scoreRange", name: "最近数学分数区间", type: "单选", required: false, options: ["90 分以下", "90-110 分", "110-130 分", "130 分以上"] },
-    { key: "issue", name: "导数最卡在哪里", type: "单选", required: false, options: ["导数压轴题不稳", "恒成立分类讨论", "零点问题卡住", "函数构造不会"] }
+    { key: "name", name: "学生姓名或昵称", type: "填空", required: true, placeholder: "请输入学生姓名", options: [] },
+    { key: "phone", name: "联系方式", type: "填空", required: true, placeholder: "请输入手机号", options: [] },
+    { key: "scoreRange", name: "最近数学分数区间", type: "单选", required: false, placeholder: "", options: ["90 分以下", "90-110 分", "110-130 分", "130 分以上"] },
+    { key: "issue", name: "导数最卡在哪里", type: "单选", required: false, placeholder: "", options: ["导数压轴题不稳", "恒成立分类讨论", "零点问题卡住", "函数构造不会"] }
   ],
   materials: [
     {
@@ -473,6 +473,7 @@ function normalizeStateSnapshot(snapshot) {
   };
   if (merged.activity.contentTitle === "资料包内容") merged.activity.contentTitle = defaultState.activity.contentTitle;
   if (merged.activity.contentNote === "文字 / 图片 / 视频 / PDF") merged.activity.contentNote = defaultState.activity.contentNote;
+  if (merged.activity.phoneHint === "数字键盘，便于填写") merged.activity.phoneHint = "";
   merged.leads = Array.isArray(snapshot.leads) ? snapshot.leads : defaultState.leads;
   merged.channels = Array.isArray(snapshot.channels) ? snapshot.channels : defaultState.channels;
   merged.fields = normalizeFields(snapshot.fields || defaultState.fields);
@@ -966,6 +967,7 @@ function normalizeFields(fields) {
     name: field.name || "自定义问题",
     type: field.type || "填空",
     required: Boolean(field.required),
+    placeholder: field.placeholder || "",
     options: Array.isArray(field.options) ? field.options : []
   }));
 }
@@ -2078,8 +2080,24 @@ function getPreviewMaterials() {
   const priority = { 图片: 1, 视频: 2, PDF: 3, 文字: 4, 语音: 5 };
   return state.materials
     .filter((item) => item.visibility !== "领取后展示")
-    .sort((a, b) => (priority[a.type] || 9) - (priority[b.type] || 9))
-    .slice(0, 5);
+    .sort((a, b) => (priority[a.type] || 9) - (priority[b.type] || 9));
+}
+
+function compactMaterialText(text, maxLength = 80) {
+  const value = String(text || "").trim();
+  if (!value) return "";
+  return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
+}
+
+function renderMaterialCopy(item, compact = false) {
+  const description = compact ? compactMaterialText(item.description, 70) : String(item.description || "").trim();
+  const body = compact ? compactMaterialText(item.body, 90) : String(item.body || "").trim();
+  const teaser = compact ? compactMaterialText(item.teaserText, 70) : String(item.teaserText || "").trim();
+  const parts = [];
+  if (description) parts.push(`<small>${description}</small>`);
+  if (body && body !== description) parts.push(`<p class="material-body">${body}</p>`);
+  if (!description && !body && teaser) parts.push(`<em>${teaser}</em>`);
+  return parts.join("");
 }
 
 function renderMaterialMedia(item, compact = false) {
@@ -2154,14 +2172,16 @@ function renderMaterialsPreview() {
   container.innerHTML = visibleItems
     .map((item, index) => {
       const media = renderMaterialMedia(item, true);
+      const copy = renderMaterialCopy(item, true);
       const isMediaCard = ["图片", "视频"].includes(item.type) && getMaterialSource(item);
+      const inlineMedia = !isMediaCard && item.type !== "文字" ? media : "";
       return `
         <article class="content-preview-card ${index === 0 ? "is-featured" : ""} ${isMediaCard ? "is-media-card" : ""}">
           ${isMediaCard ? media : ""}
           <div class="content-preview-copy">
             <strong>${item.title}</strong>
-            <small>${item.description}</small>
-            ${isMediaCard ? "" : media}
+            ${copy}
+            ${inlineMedia}
           </div>
         </article>
       `;
@@ -2183,8 +2203,8 @@ function renderUnlockedMaterials() {
                 <span class="material-icon">${getMaterialIcon(item.type)}</span>
                 <div>
                   <strong>${item.title}</strong>
-                  <small>${item.description}</small>
-                  ${renderMaterialMedia(item)}
+                  ${renderMaterialCopy(item)}
+                  ${item.type === "文字" ? "" : renderMaterialMedia(item)}
                 </div>
               </article>
             `
@@ -2346,7 +2366,7 @@ function loadImageFromDataUrl(dataUrl) {
 
 async function prepareImageUpload(file) {
   const originalDataUrl = await readFileAsDataUrl(file);
-  const targetDataUrlLength = 420 * 1024;
+  const targetDataUrlLength = 260 * 1024;
   if (originalDataUrl.length <= targetDataUrlLength) {
     return {
       dataUrl: originalDataUrl,
@@ -2356,7 +2376,7 @@ async function prepareImageUpload(file) {
   }
 
   const image = await loadImageFromDataUrl(originalDataUrl);
-  const maxSide = 1000;
+  const maxSide = 900;
   const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
   const canvas = document.createElement("canvas");
   canvas.width = Math.max(1, Math.round(image.width * scale));
@@ -2611,6 +2631,10 @@ function renderFields() {
                 </select>
               </label>
               <label class="wide">
+                填写提示词
+                <input data-edit-field="${index}" data-field-prop="placeholder" value="${field.placeholder || ""}" placeholder="如：请输入孩子当前分数" />
+              </label>
+              <label class="wide">
                 选项，用逗号分隔
                 <input data-edit-field="${index}" data-field-prop="options" value="${field.options.join("，")}" placeholder="如：90 分以下，90-110 分" />
               </label>
@@ -2644,6 +2668,12 @@ function updateFieldFromControl(input) {
   }
   if (prop === "name" && index === 1 && field.key === "phone") {
     state.activity.phoneLabel = input.value || "联系电话";
+  }
+  if (prop === "placeholder" && index === 0 && field.key === "name") {
+    state.activity.studentNamePlaceholder = input.value || "请输入学生姓名";
+  }
+  if (prop === "placeholder" && index === 1 && field.key === "phone") {
+    state.activity.phonePlaceholder = input.value || "请输入手机号";
   }
   saveState();
 }
@@ -2845,11 +2875,12 @@ function isCoreReservationField(field, index) {
 function renderConfiguredField(field, index) {
   const fieldName = `field_${index}`;
   const required = field.required ? "required" : "";
+  const placeholder = field.placeholder || (field.required ? "请填写" : "可选填");
   if (field.type === "填空" || !field.options.length) {
     return `
       <label>
         ${field.name}
-        <input name="${fieldName}" data-field-key="${field.key}" placeholder="${field.required ? "请填写" : "可选填"}" ${required} />
+        <input name="${fieldName}" data-field-key="${field.key}" placeholder="${placeholder}" ${required} />
       </label>
     `;
   }
@@ -2969,6 +3000,7 @@ function renderSchoolInput() {
 function renderDeliveryInfoForm(method = "到校自提") {
   const copy = deliveryMethodCopy(method);
   const needsAddress = method === "包邮到家";
+  const phoneHint = String(state.activity.phoneHint || "").trim();
   const priorityBlock = needsAddress
     ? `<label class="smart-field priority-delivery-field">
         ${state.activity.addressLabel || "收件地址"}
@@ -3012,7 +3044,7 @@ function renderDeliveryInfoForm(method = "到校自提") {
           <span class="field-icon field-icon-phone" aria-hidden="true"></span>
           <input name="phone" placeholder="${state.activity.phonePlaceholder || "请输入手机号"}" inputmode="numeric" maxlength="11" autocomplete="tel" required />
         </span>
-        <small>${state.activity.phoneHint || "数字键盘，便于填写"}</small>
+        ${phoneHint ? `<small>${phoneHint}</small>` : ""}
       </label>
       ${renderReservationExtraFields()}
       <button type="submit" class="inline-submit-button">${copy.submit}</button>
@@ -4013,6 +4045,7 @@ function bindChrome() {
       name: "新问题",
       type: "填空",
       required: false,
+      placeholder: "请填写",
       options: []
     });
     saveState();

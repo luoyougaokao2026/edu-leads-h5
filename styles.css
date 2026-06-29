@@ -1438,7 +1438,8 @@ h1 {
 }
 
 .public-page .content-preview-card.is-media-card .content-preview-copy {
-  display: none;
+  display: grid;
+  padding: 10px 8px 4px;
 }
 
 .public-page .content-preview-card.is-media-card .material-thumb {
@@ -4781,7 +4782,8 @@ tbody tr.is-selected {
 }
 
 .public-page .content-preview-card.is-media-card .content-preview-copy {
-  display: none;
+  display: grid;
+  padding: 10px 8px 4px;
 }
 
 .public-page .content-preview-card.is-media-card .material-thumb {
