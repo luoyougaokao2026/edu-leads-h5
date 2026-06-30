@@ -10,6 +10,7 @@ import re
 import secrets
 import string
 import time
+from datetime import datetime
 from http.cookies import SimpleCookie
 try:
     from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -475,6 +476,112 @@ def replace_meta_content(markup, selector, content):
     return re.sub(pattern, rf"\g<1>{escaped}\2", markup, flags=re.IGNORECASE | re.DOTALL)
 
 
+def replace_tag_text_by_attr(markup, attr_name, attr_value, content):
+    escaped = html.escape(str(content or ""), quote=False)
+    pattern = rf'(<(?P<tag>[a-z0-9]+)\b(?=[^>]*\b{re.escape(attr_name)}="{re.escape(attr_value)}")[^>]*>)(.*?)(</(?P=tag)>)'
+    return re.sub(pattern, lambda match: f"{match.group(1)}{escaped}{match.group(4)}", markup, count=1, flags=re.IGNORECASE | re.DOTALL)
+
+
+def replace_tag_text_by_id(markup, element_id, content):
+    escaped = html.escape(str(content or ""), quote=False)
+    pattern = rf'(<(?P<tag>[a-z0-9]+)\b(?=[^>]*\bid="{re.escape(element_id)}")[^>]*>)(.*?)(</(?P=tag)>)'
+    return re.sub(pattern, lambda match: f"{match.group(1)}{escaped}{match.group(4)}", markup, count=1, flags=re.IGNORECASE | re.DOTALL)
+
+
+def replace_audience_markup(markup, audience):
+    if not isinstance(audience, list):
+        return markup
+    items = [str(item).strip() for item in audience if str(item or "").strip()]
+    if not items:
+        return markup
+    audience_markup = "\n".join(f"                  <li>{html.escape(item, quote=False)}</li>" for item in items)
+    return re.sub(
+        r'(<ul\s+id="audienceList"\s*>)(.*?)(</ul>)',
+        lambda match: f"{match.group(1)}\n{audience_markup}\n                {match.group(3)}",
+        markup,
+        count=1,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+
+def parse_int(value, fallback=0):
+    try:
+        return int(str(value or "").strip())
+    except (TypeError, ValueError):
+        return fallback
+
+
+def deadline_display(value):
+    text = str(value or "").strip()
+    if not text:
+        return "暂未设置"
+    try:
+        if re.match(r"^\d{4}-\d{2}-\d{2}$", text):
+            parsed = datetime.fromisoformat(f"{text}T08:00:00")
+        else:
+            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+        return f"{parsed.month:02d}月{parsed.day:02d}日 {parsed.hour:02d}:{parsed.minute:02d}"
+    except ValueError:
+        return text
+
+
+def countdown_display(value):
+    text = str(value or "").strip()
+    if not text:
+        return "暂未设置截止时间"
+    try:
+        if re.match(r"^\d{4}-\d{2}-\d{2}$", text):
+            deadline = datetime.fromisoformat(f"{text}T08:00:00")
+        else:
+            deadline = datetime.fromisoformat(text.replace("Z", "+00:00")).replace(tzinfo=None)
+    except ValueError:
+        return "暂未设置截止时间"
+    diff = (deadline - datetime.now()).total_seconds()
+    if diff <= 0:
+        return "本轮已截止"
+    total_seconds = int(diff)
+    days = total_seconds // 86400
+    hours = (total_seconds % 86400) // 3600
+    return f"距截止 {days}天{hours}小时" if days > 0 else f"距截止 {max(1, hours)}小时内"
+
+
+def render_index_activity_body(markup, state):
+    activity = state.get("activity", {})
+    joins_count = visible_join_count(state)
+    total_quota = parse_int(activity.get("totalQuota") or activity.get("quota"), 0)
+    remaining = max(0, total_quota - joins_count) if total_quota else 0
+    page_views = parse_int((state.get("events") or {}).get("page_view"), 0)
+
+    for key in [
+        "tag",
+        "title",
+        "subtitle",
+        "joinLabel",
+        "contentTitle",
+        "contentNote",
+        "ctaText",
+        "formHint",
+        "noticeLeft",
+        "recentJoinTitle",
+        "adminName",
+    ]:
+        if key in activity:
+            markup = replace_tag_text_by_attr(markup, "data-activity-field", key, activity.get(key))
+
+    markup = replace_tag_text_by_id(markup, "viewCount", page_views)
+    markup = replace_tag_text_by_id(markup, "joinCount", joins_count)
+    markup = replace_tag_text_by_id(markup, "remainingQuota", remaining)
+    markup = replace_tag_text_by_id(markup, "deadlineText", deadline_display(activity.get("deadline")))
+    markup = re.sub(
+        r'(<div\s+class="countdown-units"\s+id="countdownUnits"\s*>\s*)<span[^>]*>.*?</span>(\s*</div>)',
+        lambda match: f"{match.group(1)}<span>{html.escape(countdown_display(activity.get('deadline')), quote=False)}</span>{match.group(2)}",
+        markup,
+        count=1,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+    return replace_audience_markup(markup, activity.get("audience"))
+
+
 def render_index_with_share_meta(handler):
     index_path = ROOT / "index.html"
     markup = index_path.read_text(encoding="utf-8")
@@ -500,7 +607,7 @@ def render_index_with_share_meta(handler):
     markup = replace_meta_content(markup, r'property="og:description"', description)
     markup = replace_meta_content(markup, r'property="og:image"', image)
     markup = replace_meta_content(markup, r'property="og:url"', page_url)
-    return markup
+    return render_index_activity_body(markup, state)
 
 
 def exchange_wechat_code(code):
