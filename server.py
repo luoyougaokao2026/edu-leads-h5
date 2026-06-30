@@ -511,30 +511,42 @@ def parse_int(value, fallback=0):
         return fallback
 
 
-def deadline_display(value):
+def parse_deadline_datetime(value):
     text = str(value or "").strip()
     if not text:
-        return "暂未设置"
-    try:
-        if re.match(r"^\d{4}-\d{2}-\d{2}$", text):
-            parsed = datetime.fromisoformat(f"{text}T08:00:00")
-        else:
-            parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
-        return f"{parsed.month:02d}月{parsed.day:02d}日 {parsed.hour:02d}:{parsed.minute:02d}"
-    except ValueError:
-        return text
+        return None
+    if re.match(r"^\d{4}-\d{2}-\d{2}$", text):
+        try:
+            return datetime.strptime(text, "%Y-%m-%d").replace(hour=8, minute=0)
+        except ValueError:
+            return None
+
+    normalized = text.replace("T", " ").strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1].strip()
+    normalized = re.sub(r"\s*[+-]\d{2}:?\d{2}$", "", normalized).strip()
+    normalized = normalized.split(".", 1)[0]
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M"):
+        try:
+            return datetime.strptime(normalized, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def deadline_display(value):
+    deadline = parse_deadline_datetime(value)
+    if not deadline:
+        text = str(value or "").strip()
+        return text or "暂未设置"
+    return f"{deadline.month:02d}月{deadline.day:02d}日 {deadline.hour:02d}:{deadline.minute:02d}"
 
 
 def countdown_display(value):
-    text = str(value or "").strip()
-    if not text:
+    if not str(value or "").strip():
         return "暂未设置截止时间"
-    try:
-        if re.match(r"^\d{4}-\d{2}-\d{2}$", text):
-            deadline = datetime.fromisoformat(f"{text}T08:00:00")
-        else:
-            deadline = datetime.fromisoformat(text.replace("Z", "+00:00")).replace(tzinfo=None)
-    except ValueError:
+    deadline = parse_deadline_datetime(value)
+    if not deadline:
         return "暂未设置截止时间"
     diff = (deadline - datetime.now()).total_seconds()
     if diff <= 0:
