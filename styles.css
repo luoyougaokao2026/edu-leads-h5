@@ -3494,6 +3494,91 @@ tbody tr.is-selected {
   font-weight: 800;
 }
 
+.join-manager-block {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.join-manager-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.join-manager-row {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+}
+
+.join-manager-row.is-hidden {
+  background: #f8faf8;
+  opacity: 0.72;
+}
+
+.join-manager-person {
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 9px;
+  align-items: center;
+}
+
+.join-manager-person .avatar,
+.join-manager-person .avatar img {
+  width: 34px;
+  height: 34px;
+}
+
+.join-manager-person strong,
+.join-manager-person small {
+  display: block;
+}
+
+.join-manager-person small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.join-manager-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.join-manager-fields label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.join-manager-fields input {
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.join-manager-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.join-manager-actions .danger {
+  color: #b42318;
+  border-color: #f4c7c2;
+  background: #fff7f6;
+}
+
 .activity-editor {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
@@ -4253,6 +4338,8 @@ tbody tr.is-selected {
   .two-col,
   .crm-layout,
   .settings-grid,
+  .join-manager-row,
+  .join-manager-fields,
   .channel-summary,
   .referral-summary,
   .activity-editor {

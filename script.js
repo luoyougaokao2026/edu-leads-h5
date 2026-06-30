@@ -924,6 +924,34 @@ function getVisibleJoins() {
   return state.joins.filter((item) => !item.hiddenFromPublic);
 }
 
+function getLeadJoinMatchIndexes(lead = {}) {
+  const submissionId = String(lead.submissionId || "").trim();
+  const openid = getLeadOpenId(lead);
+  const phone = String(lead.phone || "").trim();
+  const name = String(lead.name || "").trim();
+  const school = String(lead.school || lead.answers?.school || lead.answers?.["所在学校"] || "").trim();
+
+  const strongMatches = state.joins
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => {
+      if (submissionId && item.submissionId === submissionId) return true;
+      if (openid && item.wechatIdentity?.openid === openid) return true;
+      if (phone && String(item.phone || "").trim() === phone) return true;
+      return false;
+    })
+    .map(({ index }) => index);
+  if (strongMatches.length) return strongMatches;
+
+  return state.joins
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => {
+      if (!name || item.name !== name) return false;
+      const itemSchool = String(item.school || "").trim();
+      return !school || !itemSchool || itemSchool === school;
+    })
+    .map(({ index }) => index);
+}
+
 function getTotalQuota() {
   const value = Number.parseInt(state.activity.totalQuota || state.activity.quota || "0", 10);
   return Number.isFinite(value) ? value : 0;
@@ -1492,6 +1520,54 @@ function renderJoins() {
   setupJoinAutoScroll();
 }
 
+function renderJoinManager() {
+  const container = document.querySelector("#joinManagerList");
+  if (!container) return;
+  const joins = state.joins || [];
+  if (!joins.length) {
+    container.innerHTML = `<p class="empty-hint">暂无近期领取动态。</p>`;
+    return;
+  }
+
+  container.innerHTML = joins
+    .map((item, index) => {
+      const lead = findLeadByName(item.name) || {};
+      const school = item.school || lead.school || lead.answers?.school || lead.answers?.["所在学校"] || "";
+      const phone = item.phone || lead.phone || "";
+      const hidden = Boolean(item.hiddenFromPublic || lead.hiddenFromPublic);
+      return `
+        <article class="join-manager-row ${hidden ? "is-hidden" : ""}">
+          <div class="join-manager-person">
+            ${renderAvatar(item)}
+            <div>
+              <strong>${item.name || "未命名家长"}</strong>
+              <small>${hidden ? "前台已隐藏" : "前台显示中"}${phone ? ` · ${phone}` : ""}</small>
+            </div>
+          </div>
+          <div class="join-manager-fields">
+            <label>
+              显示姓名
+              <input data-edit-join="${index}" data-join-prop="name" value="${item.name || ""}" />
+            </label>
+            <label>
+              学校
+              <input data-edit-join="${index}" data-join-prop="school" value="${school}" placeholder="前台展示学校" />
+            </label>
+            <label>
+              时间
+              <input data-edit-join="${index}" data-join-prop="time" value="${item.time || "刚刚"}" />
+            </label>
+          </div>
+          <div class="join-manager-actions">
+            <button type="button" class="secondary-button" data-toggle-join-public="${index}">${hidden ? "恢复显示" : "隐藏前台"}</button>
+            <button type="button" class="secondary-button danger" data-delete-join="${index}">删除动态</button>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function setupJoinAutoScroll() {
   const container = document.querySelector("#recentJoins");
   if (!container) return;
@@ -2002,11 +2078,13 @@ function toggleSelectedLeadPublicVisibility() {
   const entry = getSelectedLeadEntry();
   if (!entry) return;
   const lead = entry.item;
-  const joinIndex = findExistingJoinIndex(lead);
-  const join = joinIndex >= 0 ? state.joins[joinIndex] : null;
-  const nextHidden = !Boolean(lead.hiddenFromPublic || join?.hiddenFromPublic);
+  const joinIndexes = getLeadJoinMatchIndexes(lead);
+  const joins = joinIndexes.map((index) => state.joins[index]).filter(Boolean);
+  const nextHidden = !Boolean(lead.hiddenFromPublic || joins.some((join) => join.hiddenFromPublic));
   lead.hiddenFromPublic = nextHidden;
-  if (join) join.hiddenFromPublic = nextHidden;
+  joins.forEach((join) => {
+    join.hiddenFromPublic = nextHidden;
+  });
   const action = nextHidden ? "后台隐藏前台领取动态" : "后台恢复前台领取动态";
   lead.actions = mergeActions(lead.actions, [action]);
   saveState();
@@ -2022,8 +2100,9 @@ function deleteSelectedLead() {
   const ok = window.confirm(`确定删除 ${lead.name} 的领取记录吗？会同时从近期领取里移除。`);
   if (!ok) return;
 
-  const joinIndex = findExistingJoinIndex(lead);
-  if (joinIndex >= 0) state.joins.splice(joinIndex, 1);
+  getLeadJoinMatchIndexes(lead)
+    .sort((a, b) => b - a)
+    .forEach((index) => state.joins.splice(index, 1));
 
   state.leads.splice(entry.index, 1);
   state.channels = state.channels
@@ -2044,6 +2123,44 @@ function deleteSelectedLead() {
   renderAll();
   syncFullStateToServer();
   showToast("线索和近期领取已删除");
+}
+
+function updateJoinFromControl(input) {
+  const join = state.joins[Number(input.dataset.editJoin)];
+  if (!join) return;
+  join[input.dataset.joinProp] = input.value.trim();
+  saveState();
+  renderJoins();
+  renderMetrics();
+  schedulePublishState();
+}
+
+function toggleJoinPublic(index) {
+  const join = state.joins[index];
+  if (!join) return;
+  join.hiddenFromPublic = !Boolean(join.hiddenFromPublic);
+  const lead = findLeadByName(join.name);
+  if (lead) lead.hiddenFromPublic = join.hiddenFromPublic;
+  saveState();
+  renderJoins();
+  renderJoinManager();
+  renderMetrics();
+  schedulePublishState();
+  showToast(join.hiddenFromPublic ? "已隐藏前台动态" : "已恢复前台动态");
+}
+
+function deleteJoin(index) {
+  const join = state.joins[index];
+  if (!join) return;
+  const ok = window.confirm(`确定删除 ${join.name || "这条"} 近期领取动态吗？\n\n只删除前台近期领取，不会删除 CRM 客户。`);
+  if (!ok) return;
+  state.joins.splice(index, 1);
+  saveState();
+  renderJoins();
+  renderJoinManager();
+  renderMetrics();
+  schedulePublishState();
+  showToast("近期领取动态已删除");
 }
 
 function renderChannels() {
@@ -3291,14 +3408,7 @@ function findExistingLeadIndex(lead) {
 }
 
 function findExistingJoinIndex(lead) {
-  const openid = getLeadOpenId(lead);
-  const phone = String(lead.phone || "").trim();
-  return state.joins.findIndex((item) => {
-    if (lead.submissionId && item.submissionId === lead.submissionId) return true;
-    if (openid && item.wechatIdentity?.openid === openid) return true;
-    if (phone && String(item.phone || "").trim() === phone) return true;
-    return item.name === lead.name;
-  });
+  return getLeadJoinMatchIndexes(lead)[0] ?? -1;
 }
 
 function mergeActions(existing = [], incoming = []) {
@@ -3978,6 +4088,18 @@ function bindChrome() {
       return;
     }
 
+    const toggleJoinButton = event.target.closest("[data-toggle-join-public]");
+    if (toggleJoinButton) {
+      toggleJoinPublic(Number(toggleJoinButton.dataset.toggleJoinPublic));
+      return;
+    }
+
+    const deleteJoinButton = event.target.closest("[data-delete-join]");
+    if (deleteJoinButton) {
+      deleteJoin(Number(deleteJoinButton.dataset.deleteJoin));
+      return;
+    }
+
     const focusLead = event.target.closest("[data-focus-lead]");
     if (focusLead) {
       state.selectedLead = Number(focusLead.dataset.focusLead);
@@ -4067,6 +4189,12 @@ function bindChrome() {
   });
 
   document.body.addEventListener("input", (event) => {
+    const joinInput = event.target.closest("[data-edit-join]");
+    if (joinInput) {
+      updateJoinFromControl(joinInput);
+      return;
+    }
+
     const input = event.target.closest("[data-edit-field]");
     if (input) {
       updateFieldFromControl(input);
@@ -4192,6 +4320,7 @@ function renderAll() {
   renderMaterialsPreview();
   renderFields();
   renderVisibilityControls();
+  renderJoinManager();
   renderMetrics();
   configureWechatShareCard();
 }
