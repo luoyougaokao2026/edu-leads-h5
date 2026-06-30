@@ -108,7 +108,7 @@
 
               <section class="join-list" aria-label="接龙名单">
                 <div class="section-title">
-                  <h3>近期领取动态</h3>
+                  <h3 data-activity-field="recentJoinTitle">近期领取动态</h3>
                   <button data-open-panel="allJoins">查看全部</button>
                 </div>
                 <div class="join-scroll" id="recentJoins"></div>
@@ -211,6 +211,10 @@
                       <label>
                         资料区说明
                         <input data-edit-activity="contentNote" value="题册 + 视频" />
+                      </label>
+                      <label>
+                        近期动态标题
+                        <input data-edit-activity="recentJoinTitle" value="近期领取动态" />
                       </label>
                       <label>
                         老师微信

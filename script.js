@@ -123,6 +123,7 @@ const defaultState = {
     adminName: "高三导数资料包",
     contentTitle: "资料预览",
     contentNote: "题册 + 视频",
+    recentJoinTitle: "近期领取动态",
     noticeLeft: "302 位高三学生/家长已领取",
     ctaText: "立即领取资料",
     formHint: "为给孩子预留资料，请填写领取信息。",
@@ -928,24 +929,24 @@ function getLeadJoinMatchIndexes(lead = {}) {
   const submissionId = String(lead.submissionId || "").trim();
   const openid = getLeadOpenId(lead);
   const phone = String(lead.phone || "").trim();
-  const name = String(lead.name || "").trim();
+  const nameCandidates = [
+    lead.name,
+    lead.answers?.name,
+    lead.answers?.studentName,
+    lead.answers?.["学生姓名"]
+  ]
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+  const names = new Set(nameCandidates);
   const school = String(lead.school || lead.answers?.school || lead.answers?.["所在学校"] || "").trim();
 
-  const strongMatches = state.joins
+  return state.joins
     .map((item, index) => ({ item, index }))
     .filter(({ item }) => {
       if (submissionId && item.submissionId === submissionId) return true;
       if (openid && item.wechatIdentity?.openid === openid) return true;
       if (phone && String(item.phone || "").trim() === phone) return true;
-      return false;
-    })
-    .map(({ index }) => index);
-  if (strongMatches.length) return strongMatches;
-
-  return state.joins
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => {
-      if (!name || item.name !== name) return false;
+      if (!names.has(String(item.name || "").trim())) return false;
       const itemSchool = String(item.school || "").trim();
       return !school || !itemSchool || itemSchool === school;
     })
@@ -2089,7 +2090,7 @@ function toggleSelectedLeadPublicVisibility() {
   lead.actions = mergeActions(lead.actions, [action]);
   saveState();
   renderAll();
-  syncFullStateToServer();
+  publishState();
   showToast(nextHidden ? "已隐藏前台动态" : "已恢复前台动态");
 }
 
@@ -2121,7 +2122,7 @@ function deleteSelectedLead() {
   state.selectedLead = Math.max(0, Math.min(state.selectedLead, state.leads.length - 1));
   saveState();
   renderAll();
-  syncFullStateToServer();
+  publishState();
   showToast("线索和近期领取已删除");
 }
 
@@ -2145,7 +2146,7 @@ function toggleJoinPublic(index) {
   renderJoins();
   renderJoinManager();
   renderMetrics();
-  schedulePublishState();
+  publishState();
   showToast(join.hiddenFromPublic ? "已隐藏前台动态" : "已恢复前台动态");
 }
 
@@ -2159,7 +2160,7 @@ function deleteJoin(index) {
   renderJoins();
   renderJoinManager();
   renderMetrics();
-  schedulePublishState();
+  publishState();
   showToast("近期领取动态已删除");
 }
 
