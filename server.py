@@ -476,6 +476,78 @@ def replace_meta_content(markup, selector, content):
     return re.sub(pattern, rf"\g<1>{escaped}\2", markup, flags=re.IGNORECASE | re.DOTALL)
 
 
+def add_html_class(markup, class_name):
+    match = re.search(r"<html\b([^>]*)>", markup, flags=re.IGNORECASE)
+    if not match:
+        return markup
+    attrs = match.group(1)
+    class_match = re.search(r'class="([^"]*)"', attrs, flags=re.IGNORECASE)
+    if class_match:
+        classes = class_match.group(1).split()
+        if class_name in classes:
+            return markup
+        updated_attrs = (
+            attrs[:class_match.start(1)]
+            + " ".join(classes + [class_name])
+            + attrs[class_match.end(1):]
+        )
+    else:
+        updated_attrs = f'{attrs} class="{class_name}"'
+    return markup[:match.start()] + f"<html{updated_attrs}>" + markup[match.end():]
+
+
+def is_admin_page_request(handler):
+    host = handler.headers.get("Host", "").split(":")[0].lower()
+    query = parse_qs(urlparse(handler.path).query)
+    current_route = route(handler.path).rstrip("/") or "/"
+    return (
+        host == "apply-admin.xdianping.cn"
+        or current_route == "/admin"
+        or query.get("admin", [""])[0] == "1"
+        or query.get("view", [""])[0] == "admin"
+    )
+
+
+def is_public_page_request(handler):
+    if is_admin_page_request(handler):
+        return False
+    host = handler.headers.get("Host", "").split(":")[0].lower()
+    current_route = route(handler.path).rstrip("/") or "/"
+    if host == "apply.xdianping.cn" or host.endswith(".trycloudflare.com"):
+        return True
+    return (
+        current_route == "/"
+        or current_route == "/zhaosheng"
+        or current_route.startswith("/zhaosheng/")
+        or current_route == "/parent"
+        or current_route.startswith("/parent/")
+        or current_route == "/student"
+        or current_route.startswith("/student/")
+    )
+
+
+def apply_initial_view_context(markup, handler):
+    if is_admin_page_request(handler):
+        markup = add_html_class(markup, "admin-preview")
+        return re.sub(
+            r'data-current-view="[^"]*"',
+            'data-current-view="admin"',
+            markup,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+    if is_public_page_request(handler):
+        markup = add_html_class(markup, "public-page")
+        return re.sub(
+            r'data-current-view="[^"]*"',
+            'data-current-view="mobile"',
+            markup,
+            count=1,
+            flags=re.IGNORECASE,
+        )
+    return markup
+
+
 def replace_tag_text_by_attr(markup, attr_name, attr_value, content):
     escaped = html.escape(str(content or ""), quote=False)
     pattern = rf'(<(?P<tag>[a-z0-9]+)\b(?=[^>]*\b{re.escape(attr_name)}="{re.escape(attr_value)}")[^>]*>)(.*?)(</(?P=tag)>)'
@@ -619,7 +691,8 @@ def render_index_with_share_meta(handler):
     markup = replace_meta_content(markup, r'property="og:description"', description)
     markup = replace_meta_content(markup, r'property="og:image"', image)
     markup = replace_meta_content(markup, r'property="og:url"', page_url)
-    return render_index_activity_body(markup, state)
+    markup = render_index_activity_body(markup, state)
+    return apply_initial_view_context(markup, handler)
 
 
 def exchange_wechat_code(code):
